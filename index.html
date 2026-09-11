@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#070b13" />
+    <meta
+      name="description"
+      content="Facet is a private, local-first notebook for capturing ideas and finding their connections."
+    />
+    <title>Facet | Notes with depth</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237aa7ff' d='M32 3 58 18v28L32 61 6 46V18z'/%3E%3Cpath fill='%23fff' fill-opacity='.9' d='m32 10 18 10-18 10-18-10zm0 25 18-10v17L32 52z'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <canvas id="light-field" aria-hidden="true"></canvas>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 14h5l2 2h2l2-2h5"/></symbol>
+      <symbol id="i-notes" viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h6M9 16h4"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2c.8 5.7 4.3 9.2 10 10-5.7.8-9.2 4.3-10 10-.8-5.7-4.3-9.2-10-10 5.7-.8 9.2-4.3 10-10z"/></symbol>
+      <symbol id="i-archive" viewBox="0 0 24 24"><path d="M4 7h16v14H4zM3 3h18v4H3zM9 12h6"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/></symbol>
+      <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/></symbol>
+      <symbol id="i-command" viewBox="0 0 24 24"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/></symbol>
+      <symbol id="i-backlink" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.1 1.1M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.1-1.1"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+      <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-7 7z"/><circle cx="7.5" cy="8.5" r="1" fill="currentColor"/></symbol>
+      <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4M5 12v8h14v-8"/></symbol>
+      <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 3v12M8 11l4 4 4-4M5 12v8h14v-8"/></symbol>
+      <symbol id="i-restore" viewBox="0 0 24 24"><path d="M4 9V4h5M4.5 4.5A9 9 0 1 1 3 14M12 7v5l4 2"/></symbol>
+      <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></symbol>
+      <symbol id="i-focus" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    </svg>
+
+    <div class="app-frame">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <div class="brand-mark"><span></span><span></span><span></span></div>
+          <strong>Facet</strong>
+        </div>
+        <button class="search-trigger" id="search-trigger" type="button">
+          <svg><use href="#i-search"/></svg>
+          <span>Search every thought</span>
+          <kbd>⌘ K</kbd>
+        </button>
+        <div class="top-actions">
+          <span class="save-state" id="save-state"><i></i> Saved locally</span>
+          <button class="round-button" id="export-button" type="button" aria-label="Export all notes" title="Export all notes">
+            <svg><use href="#i-export"/></svg>
+          </button>
+          <button class="round-button" id="import-button" type="button" aria-label="Import a Facet backup" title="Import a Facet backup">
+            <svg><use href="#i-import"/></svg>
+          </button>
+          <button class="new-note-button" id="new-note-button" type="button">
+            <svg><use href="#i-plus"/></svg><span>New note</span><kbd>⌘ N</kbd>
+          </button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="rail" aria-label="Library">
+          <nav id="primary-nav">
+            <button class="rail-item active" data-view="now" type="button"><svg><use href="#i-inbox"/></svg><span>Now</span><b id="count-now">0</b></button>
+            <button class="rail-item" data-view="all" type="button"><svg><use href="#i-notes"/></svg><span>All notes</span><b id="count-all">0</b></button>
+            <button class="rail-item" data-view="favorites" type="button"><svg><use href="#i-star"/></svg><span>Favorites</span><b id="count-favorites">0</b></button>
+            <button class="rail-item" data-view="daily" type="button"><svg><use href="#i-calendar"/></svg><span>Daily notes</span></button>
+          </nav>
+
+          <div class="rail-section">
+            <div class="section-label"><span>Spaces</span><button id="add-space" type="button" aria-label="Add space"><svg><use href="#i-plus"/></svg></button></div>
+            <div id="space-list"></div>
+          </div>
+
+          <div class="rail-section tag-section">
+            <div class="section-label"><span>Tags</span></div>
+            <div id="tag-list" class="tag-list"></div>
+          </div>
+
+          <div class="rail-bottom">
+            <button class="rail-item" data-view="archive" type="button"><svg><use href="#i-archive"/></svg><span>Archive</span></button>
+            <button class="rail-item" data-view="trash" type="button"><svg><use href="#i-trash"/></svg><span>Recently deleted</span></button>
+            <div class="storage-card"><div><span>On this device</span><strong id="storage-count">0 notes</strong></div><span class="storage-ring"><i></i></span></div>
+          </div>
+        </aside>
+
+        <section class="note-browser" aria-label="Notes">
+          <div class="browser-head">
+            <div><span class="overline" id="view-overline">TODAY</span><h1 id="view-title">Now</h1></div>
+            <div class="view-switch" aria-label="Note view">
+              <button class="active" data-layout="list" type="button" aria-label="List view"><svg><use href="#i-list"/></svg></button>
+              <button data-layout="grid" type="button" aria-label="Grid view"><svg><use href="#i-grid"/></svg></button>
+            </div>
+          </div>
+          <div class="day-strip" id="day-strip" aria-label="Daily notes"></div>
+          <div class="note-list" id="note-list"></div>
+          <div class="empty-list" id="empty-list" hidden>
+            <div class="empty-orbit"><span></span></div>
+            <h2>Nothing here yet</h2>
+            <p>Capture the thought before it changes shape.</p>
+            <button type="button" id="empty-new">Write a note</button>
+          </div>
+        </section>
+
+        <main class="editor" id="editor" aria-label="Note editor">
+          <div class="editor-empty" id="editor-empty">
+            <div class="empty-prism"><i></i><i></i><i></i></div>
+            <h2>Pick up where you left off.</h2>
+            <p>Select a note or press <kbd>⌘ N</kbd>.</p>
+          </div>
+          <article id="editor-document" hidden>
+            <div class="editor-toolbar">
+              <div class="editor-path" id="editor-path"></div>
+              <div class="editor-actions">
+                <button id="favorite-button" type="button" aria-label="Favorite note"><svg><use href="#i-star"/></svg></button>
+                <button id="focus-button" type="button" aria-label="Focus on note"><svg><use href="#i-focus"/></svg></button>
+                <button id="more-button" type="button" aria-label="Note actions"><svg><use href="#i-more"/></svg></button>
+              </div>
+            </div>
+            <div class="note-paper">
+              <div class="note-date" id="note-date"></div>
+              <input class="title-input" id="title-input" aria-label="Note title" placeholder="Untitled" autocomplete="off" />
+              <div class="note-tags" id="note-tags"></div>
+              <textarea class="body-input" id="body-input" aria-label="Note content" placeholder="Start writing..." spellcheck="true"></textarea>
+            </div>
+            <aside class="connections" id="connections">
+              <div class="connections-head"><svg><use href="#i-backlink"/></svg><span>Connections</span></div>
+              <div id="backlink-list"></div>
+              <p class="connections-tip">Type [[ followed by a note title to connect ideas.</p>
+            </aside>
+            <div class="statusbar">
+              <span id="word-count">0 words</span><span>Markdown shortcuts</span><span id="edited-time">Edited now</span>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+
+    <dialog class="command-dialog" id="command-dialog">
+      <form method="dialog" class="command-shell">
+        <div class="command-input-wrap"><svg><use href="#i-search"/></svg><input id="command-input" autocomplete="off" placeholder="Find a note or run a command" /><kbd>esc</kbd></div>
+        <div class="command-results" id="command-results"></div>
+        <div class="command-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span><span><kbd>⌘ N</kbd> new note</span></div>
+      </form>
+    </dialog>
+
+    <dialog class="action-dialog" id="action-dialog">
+      <form method="dialog" id="action-form"></form>
+    </dialog>
+
+    <input type="file" id="import-input" accept="application/json,.json" hidden />
+    <div class="toast-region" id="toast-region" aria-live="polite"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
