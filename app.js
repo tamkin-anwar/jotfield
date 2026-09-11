@@ -1,4 +1,5 @@
-const STORAGE_KEY = 'facet-notes-v1';
+const STORAGE_KEY = 'jotfield-notes-v1';
+const LEGACY_STORAGE_KEY = 'facet-notes-v1';
 const SPACE_COLORS = ['#7aa7ff', '#b295ff', '#70dded', '#77d6ad', '#f1bd70', '#ff8b93'];
 
 const $ = (selector) => document.querySelector(selector);
@@ -18,7 +19,7 @@ const starterState = {
     {
       id: 'welcome',
       title: 'A notebook with more than one angle',
-      body: 'Facet keeps capture fast and structure optional. Write first. Add #tags when they help. Connect another thought by typing [[Field test]].\n\nEverything here stays in this browser until you export it.',
+      body: 'Jotfield keeps capture fast and structure optional. Write first. Add #tags when they help. Connect another thought by typing [[Field test]].\n\nEverything here stays in this browser until you export it.',
       space: 'personal',
       favorite: true,
       archived: false,
@@ -67,7 +68,8 @@ let commandItems = [];
 
 function loadState() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+    const parsed = JSON.parse(saved);
     if (parsed && Array.isArray(parsed.notes) && Array.isArray(parsed.spaces)) return parsed;
   } catch {}
   return structuredClone(starterState);
@@ -407,12 +409,12 @@ function runCommand(index) {
 }
 
 function exportNotes() {
-  const payload = { product: 'Facet', exported: now(), ...state };
+  const payload = { product: 'Jotfield', exported: now(), ...state };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = `facet-notes-${todayKey()}.json`;
+  anchor.download = `jotfield-notes-${todayKey()}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
   toast('Notebook exported');
@@ -433,7 +435,7 @@ function importNotes(file) {
       render();
       toast('Notebook restored');
     } catch {
-      toast('That file is not a Facet backup');
+      toast('That file is not a Jotfield backup');
     }
   });
   reader.readAsText(file);

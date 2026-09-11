@@ -1,6 +1,6 @@
-# Facet
+# Jotfield
 
-Facet is a local-first notebook for people who collect ideas faster than they can organize them. It opens directly into your notes, keeps capture immediate, and lets structure emerge through spaces, tags, daily pages, and visible connections.
+Jotfield is a local-first notebook for people who collect ideas faster than they can organize them. It opens directly into your notes, keeps capture immediate, and lets structure emerge through spaces, tags, daily pages, and visible connections.
 
 The interface is built as a luminous desktop instrument. A WebGL light field moves beneath glass surfaces, every icon is drawn as SVG, and the layout scales cleanly from compact screens to 4K displays.
 
@@ -21,7 +21,7 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 
 ## Product research
 
-Facet combines the interaction patterns people return to across established note tools:
+Jotfield combines the interaction patterns people return to across established note tools:
 
 - Apple Notes inspired fast capture, familiar folders, tags, and filtered views.
 - Google Keep inspired low-friction organization, color cues, pins, and checklist-friendly writing.
@@ -30,7 +30,7 @@ Facet combines the interaction patterns people return to across established note
 - Obsidian inspired explicit links and backlinks between notes.
 - Fantastical inspired context-first navigation, polished keyboard control, and an interface that feels like one instrument.
 
-Facet keeps these ideas inside a focused personal notebook. It does not require AI, a subscription, or a cloud account.
+Jotfield keeps these ideas inside a focused personal notebook. It does not require AI, a subscription, or a cloud account.
 
 ## Running locally
 
@@ -46,6 +46,6 @@ Your notes stay in the browser storage for that address. Use the export button i
 
 ## Technical shape
 
-Facet uses semantic HTML, modern CSS, native JavaScript, WebGL, localStorage, and a reusable SVG icon system. There are no runtime packages and no build step.
+Jotfield uses semantic HTML, modern CSS, native JavaScript, WebGL, localStorage, and a reusable SVG icon system. There are no runtime packages and no build step.
 
 Built by Anwar Creative Studio.
