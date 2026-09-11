@@ -256,7 +256,7 @@ function renderEditor() {
   if ($('#title-input') !== document.activeElement) $('#title-input').value = note.title;
   if ($('#body-input') !== document.activeElement) $('#body-input').value = note.body;
   $('#favorite-button').classList.toggle('active', note.favorite);
-  $('#favorite-button').querySelector('svg').style.fill = note.favorite ? 'rgba(241,189,112,.2)' : '';
+  $('#favorite-button').querySelector('svg').style.fill = note.favorite ? 'rgba(255,92,53,.18)' : '';
   renderInlineTags(note);
   renderBacklinks(note);
   updateWordCount(note);
@@ -625,10 +625,14 @@ function startLightField() {
   if (!gl) return;
   const vertex = `attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
   const fragment = `precision highp float;uniform vec2 r;uniform float t;
-    float orb(vec2 p,vec2 c,float s){return s/max(length(p-c),.06);}
-    void main(){vec2 uv=(gl_FragCoord.xy-.5*r)/min(r.x,r.y);float n=sin(uv.x*3.1+t*.07)*cos(uv.y*2.7-t*.05);
-    float a=orb(uv,vec2(-.72+.08*sin(t*.09),.48),.026);float b=orb(uv,vec2(.82,.22+.09*cos(t*.07)),.023);float c=orb(uv,vec2(.18,-.8),.018);
-    vec3 col=vec3(.018,.027,.052)+a*vec3(.06,.17,.38)+b*vec3(.19,.07,.3)+c*vec3(.02,.2,.22)+n*.004;gl_FragColor=vec4(col,1.);}`;
+    float bloom(vec2 p,vec2 c,float s){return s/max(dot(p-c,p-c),.12);}
+    void main(){vec2 uv=(gl_FragCoord.xy-.5*r)/min(r.x,r.y);
+    float grain=(sin(uv.x*91.0+uv.y*57.0)+sin(uv.y*113.0-uv.x*41.0))*.0015;
+    float a=bloom(uv,vec2(-.72+.1*sin(t*.045),.48),.032);
+    float b=bloom(uv,vec2(.78,.28+.08*cos(t*.04)),.025);
+    float c=bloom(uv,vec2(.2,-.82),.02);
+    vec3 col=vec3(.91,.875,.81)+a*vec3(.16,.035,.0)+b*vec3(.0,.08,.16)+c*vec3(.11,.15,.0)+grain;
+    gl_FragColor=vec4(col,1.);}`;
   const compile = (type, source) => {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
