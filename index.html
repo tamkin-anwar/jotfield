@@ -14,7 +14,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237aa7ff' d='M32 3 58 18v28L32 61 6 46V18z'/%3E%3Cpath fill='%23fff' fill-opacity='.9' d='m32 10 18 10-18 10-18-10zm0 25 18-10v17L32 52z'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./jotfield-icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=daily1" />
+    <link rel="stylesheet" href="./styles.css?v=everywhere1" />
   </head>
   <body>
     <canvas id="light-field" aria-hidden="true"></canvas>
@@ -250,11 +250,21 @@
           <button type="button" role="radio" data-theme-choice="dark"><i class="theme-preview dark-preview"></i><span>Dark</span><b></b></button>
         </div>
       </section>
-      <p class="settings-foot">Your preference stays in this browser.</p>
+      <section class="settings-section everywhere-settings">
+        <div class="settings-copy"><h3>Private vault</h3><p>Move your complete notebook between devices in an encrypted file. Your passphrase never leaves this device.</p></div>
+        <label class="vault-pass"><span>Vault passphrase</span><input id="vault-passphrase" type="password" autocomplete="new-password" minlength="10" placeholder="At least 10 characters" /></label>
+        <div class="vault-actions"><button type="button" id="vault-export"><svg><use href="#i-export"/></svg>Seal vault</button><button type="button" id="vault-import"><svg><use href="#i-import"/></svg>Open vault</button></div>
+      </section>
+      <section class="settings-section device-settings">
+        <div class="settings-copy"><h3>This device</h3><p id="device-status">Changes appear instantly in every open Jotfield tab.</p></div>
+        <button type="button" class="install-button" id="install-button"><svg><use href="#i-bolt"/></svg><span>Install Jotfield</span></button>
+      </section>
+      <p class="settings-foot">Local use never requires an account.</p>
     </dialog>
 
     <input type="file" id="import-input" accept="application/json,.json" hidden />
     <input type="file" id="attachment-input" accept="image/*,.pdf,.txt,.md,.doc,.docx" hidden />
+    <input type="file" id="vault-input" accept="application/jotfield-vault,.jotvault" hidden />
     <div class="slash-menu" id="slash-menu" hidden role="listbox" aria-label="Insert block">
       <button type="button" data-slash="h2"><b>H</b><span><strong>Heading</strong><small>Large section title</small></span></button>
       <button type="button" data-slash="ul"><b>•</b><span><strong>Bullet list</strong><small>Start an unordered list</small></span></button>
@@ -263,6 +273,7 @@
       <button type="button" data-slash="code"><b>&lt;/&gt;</b><span><strong>Code</strong><small>Preserve spacing and syntax</small></span></button>
     </div>
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
-    <script type="module" src="./app.js?v=daily1"></script>
+    <nav class="mobile-dock" aria-label="Mobile navigation"><button type="button" data-mobile-action="library"><svg><use href="#i-notes"/></svg><span>Library</span></button><button type="button" data-mobile-action="search"><svg><use href="#i-search"/></svg><span>Search</span></button><button class="capture" type="button" data-mobile-action="jot"><svg><use href="#i-bolt"/></svg><span>Jot</span></button><button type="button" data-mobile-action="plan"><svg><use href="#i-check"/></svg><span>Plan</span></button></nav>
+    <script type="module" src="./app.js?v=everywhere1"></script>
   </body>
 </html>

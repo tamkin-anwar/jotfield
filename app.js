@@ -80,6 +80,8 @@ let searchScope = 'all';
 let retrievalIndex = null;
 let planView = 'agenda';
 let planMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let installEvent = null;
+const deviceChannel = 'BroadcastChannel' in window ? new BroadcastChannel('jotfield-device-sync') : null;
 let databasePromise;
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
@@ -182,9 +184,71 @@ function persist() {
     const revision = note ? { id: `${Date.now()}-${note.id}`, noteId: note.id, created: now(), note: structuredClone(note) } : null;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
     writeDurably(snapshot, revision).catch(() => {});
+    deviceChannel?.postMessage({ type: 'notebook', snapshot });
     $('#save-state').classList.remove('saving');
     $('#save-state').lastChild.textContent = ' Saved locally';
   }, 220);
+}
+
+function mergeNotebook(local, incoming) {
+  const newer = (first, second) => new Date(first.updated || first.created || 0) >= new Date(second.updated || second.created || 0) ? first : second;
+  const mergeItems = (left = [], right = []) => {
+    const items = new Map(left.map((item) => [item.id, item]));
+    right.forEach((item) => items.set(item.id, items.has(item.id) ? newer(items.get(item.id), item) : item));
+    return [...items.values()];
+  };
+  const spaces = new Map((local.spaces || []).map((space) => [space.id, space]));
+  (incoming.spaces || []).forEach((space) => { if (!spaces.has(space.id)) spaces.set(space.id, space); });
+  return {
+    notes: mergeItems(local.notes, incoming.notes),
+    tasks: mergeItems(local.tasks, incoming.tasks),
+    spaces: [...spaces.values()],
+    modifiedAt: new Date(local.modifiedAt || 0) >= new Date(incoming.modifiedAt || 0) ? local.modifiedAt : incoming.modifiedAt,
+  };
+}
+
+deviceChannel?.addEventListener('message', (event) => {
+  if (event.data?.type !== 'notebook' || !event.data.snapshot?.notes) return;
+  state = mergeNotebook(state, event.data.snapshot);
+  selectedId = state.notes.some((note) => note.id === selectedId) ? selectedId : state.notes[0]?.id || null;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  writeDurably(structuredClone(state)).catch(() => {});
+  render();
+  toast('Updated from another Jotfield tab');
+});
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary);
+}
+
+function base64ToBytes(value) {
+  return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+}
+
+async function vaultKey(passphrase, salt) {
+  const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+
+async function sealVault(passphrase) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await vaultKey(passphrase, salt);
+  const payload = new TextEncoder().encode(JSON.stringify({ product: 'Jotfield', version: 1, exported: now(), state }));
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, payload);
+  return JSON.stringify({ product: 'Jotfield Vault', version: 1, kdf: 'PBKDF2-SHA256', iterations: 310000, cipher: 'AES-256-GCM', salt: bytesToBase64(salt), iv: bytesToBase64(iv), data: bytesToBase64(new Uint8Array(ciphertext)) });
+}
+
+async function openVault(file, passphrase) {
+  const vault = JSON.parse(await file.text());
+  if (vault.product !== 'Jotfield Vault' || vault.version !== 1) throw new Error('Invalid vault');
+  const key = await vaultKey(passphrase, base64ToBytes(vault.salt));
+  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64ToBytes(vault.iv) }, key, base64ToBytes(vault.data));
+  const payload = JSON.parse(new TextDecoder().decode(plaintext));
+  if (payload.product !== 'Jotfield' || !payload.state?.notes) throw new Error('Invalid notebook');
+  return payload.state;
 }
 
 function currentNote() {
@@ -1128,7 +1192,7 @@ $('#task-form').addEventListener('submit', (event) => {
   const parsed = parseTaskLanguage($('#task-title').value);
   const manualDate = $('#task-date').value;
   const manualRepeat = $('#task-repeat').value;
-  state.tasks.push({ id: uid(), title: parsed.title, due: manualDate ? new Date(manualDate).toISOString() : parsed.due, repeat: manualRepeat !== 'none' ? manualRepeat : parsed.repeat, completed: false, created: now(), notified: false });
+  state.tasks.push({ id: uid(), title: parsed.title, due: manualDate ? new Date(manualDate).toISOString() : parsed.due, repeat: manualRepeat !== 'none' ? manualRepeat : parsed.repeat, completed: false, created: now(), updated: now(), notified: false });
   $('#task-title').value = '';
   $('#task-date').value = '';
   $('#task-repeat').value = 'none';
@@ -1147,6 +1211,7 @@ $('#planner-body').addEventListener('click', (event) => {
     if (task) {
       if (!task.completed && task.repeat !== 'none') advanceRecurringTask(task);
       else task.completed = !task.completed;
+      task.updated = now();
       task.notified = false;
       persist(); renderNav(); renderPlanner();
     }
@@ -1172,6 +1237,47 @@ $('#settings-button').addEventListener('click', () => {
   $('#settings-dialog').showModal();
 });
 $('#settings-close').addEventListener('click', () => $('#settings-dialog').close());
+$('#vault-export').addEventListener('click', async () => {
+  const passphrase = $('#vault-passphrase').value;
+  if (passphrase.length < 10) { toast('Use at least 10 characters'); return; }
+  try {
+    const encrypted = await sealVault(passphrase);
+    const blob = new Blob([encrypted], { type: 'application/jotfield-vault' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url; anchor.download = `jotfield-vault-${todayKey()}.jotvault`; anchor.click();
+    URL.revokeObjectURL(url);
+    $('#vault-passphrase').value = '';
+    toast('Encrypted vault sealed');
+  } catch { toast('Could not seal this vault'); }
+});
+$('#vault-import').addEventListener('click', () => {
+  if ($('#vault-passphrase').value.length < 10) { toast('Enter the vault passphrase first'); return; }
+  $('#vault-input').click();
+});
+$('#vault-input').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const incoming = await openVault(file, $('#vault-passphrase').value);
+    incoming.tasks = Array.isArray(incoming.tasks) ? incoming.tasks : [];
+    state = mergeNotebook(state, incoming);
+    selectedId = state.notes.some((note) => note.id === selectedId) ? selectedId : state.notes[0]?.id || null;
+    persist(); render();
+    $('#vault-passphrase').value = '';
+    $('#settings-dialog').close();
+    toast('Encrypted vault opened and merged');
+  } catch { toast('Passphrase or vault is not valid'); }
+  event.target.value = '';
+});
+$('#install-button').addEventListener('click', async () => {
+  if (installEvent) {
+    installEvent.prompt();
+    await installEvent.userChoice;
+    installEvent = null;
+    $('#install-button').hidden = true;
+  } else toast('Use Add to Home Screen from your browser menu');
+});
 $('.appearance-picker').addEventListener('click', (event) => {
   const button = event.target.closest('[data-theme-choice]');
   if (!button) return;
@@ -1286,6 +1392,13 @@ $('#map-stage').addEventListener('keydown', (event) => {
   $('#map-dialog').close();
   selectNote(node.dataset.note, false);
 });
+$('.mobile-dock').addEventListener('click', (event) => {
+  const action = event.target.closest('[data-mobile-action]')?.dataset.mobileAction;
+  if (action === 'library') $('#editor').classList.remove('mobile-open');
+  if (action === 'search') openCommand();
+  if (action === 'jot') { $('#quick-dialog').showModal(); requestAnimationFrame(() => $('#quick-input').focus()); }
+  if (action === 'plan') openPlanner();
+});
 $('#editor').addEventListener('click', (event) => {
   if (window.innerWidth <= 620 && event.clientY < 122 && event.clientX < 120) $('#editor').classList.remove('mobile-open');
 });
@@ -1309,6 +1422,18 @@ window.addEventListener('keydown', (event) => {
 
 scheduleReminderCheck();
 setInterval(scheduleReminderCheck, 30000);
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  installEvent = event;
+  $('#install-button').hidden = false;
+});
+window.addEventListener('appinstalled', () => {
+  installEvent = null;
+  $('#install-button').hidden = true;
+  toast('Jotfield installed');
+});
+window.addEventListener('online', () => { $('#device-status').textContent = 'Online. Open tabs stay in step instantly.'; });
+window.addEventListener('offline', () => { $('#device-status').textContent = 'Offline. Every local feature remains available.'; });
 
 function startLightField() {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
