@@ -168,7 +168,7 @@ function persist() {
     const snapshot = structuredClone(state);
     const note = currentNote();
     const revision = note ? { id: `${Date.now()}-${note.id}`, noteId: note.id, created: now(), note: structuredClone(note) } : null;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
     writeDurably(snapshot, revision).catch(() => {});
     $('#save-state').classList.remove('saving');
     $('#save-state').lastChild.textContent = ' Saved locally';
@@ -202,6 +202,40 @@ function relativeTime(value) {
 
 function cleanPreview(body) {
   return body.replace(/\[\[|\]\]|[#*_`>-]/g, '').replace(/\s+/g, ' ').trim() || 'Empty note';
+}
+
+function escapeHTML(value) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[character]));
+}
+
+function plainTextToHTML(value) {
+  if (!value) return '<p><br></p>';
+  return value.split(/\n{2,}/).map((paragraph) => `<p>${escapeHTML(paragraph).replace(/\n/g, '<br>')}</p>`).join('');
+}
+
+function editorPlainText() {
+  return $('#body-input').innerText.replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
+function saveRichEditor() {
+  const note = currentNote();
+  if (!note) return;
+  note.html = $('#body-input').innerHTML;
+  note.body = editorPlainText();
+  note.updated = now();
+  persist();
+  renderList();
+  renderNav();
+  renderInlineTags(note);
+  renderBacklinks(note);
+  updateWordCount(note);
+  $('#edited-time').textContent = 'Edited now';
 }
 
 function visibleNotes() {
@@ -343,7 +377,7 @@ function renderEditor() {
   $('#editor-path').append(first, divider, second);
   $('#note-date').textContent = new Date(note.created).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   if ($('#title-input') !== document.activeElement) $('#title-input').value = note.title;
-  if ($('#body-input') !== document.activeElement) $('#body-input').value = note.body;
+  if ($('#body-input') !== document.activeElement) $('#body-input').innerHTML = note.html || plainTextToHTML(note.body);
   $('#favorite-button').classList.toggle('active', note.favorite);
   $('#favorite-button').querySelector('svg').style.fill = note.favorite ? 'rgba(255,92,53,.18)' : '';
   renderInlineTags(note);
@@ -432,6 +466,67 @@ function updateSelected(field, value) {
   updateWordCount(note);
   $('#editor-path').lastChild.textContent = note.title || 'Untitled';
   $('#edited-time').textContent = 'Edited now';
+}
+
+function runEditorCommand(command, value = null) {
+  $('#body-input').focus();
+  document.execCommand(command, false, value);
+  saveRichEditor();
+}
+
+function insertChecklist() {
+  $('#body-input').focus();
+  document.execCommand('insertHTML', false, '<ul class="task-list"><li data-checked="false"><button type="button" class="task-check" contenteditable="false" aria-label="Mark task complete"></button><span>New task</span></li></ul><p><br></p>');
+  saveRichEditor();
+}
+
+function insertLink() {
+  const address = window.prompt('Paste a web address');
+  if (!address) return;
+  const safeAddress = /^https?:\/\//i.test(address) ? address : `https://${address}`;
+  const selection = getSelection();
+  if (selection?.toString()) runEditorCommand('createLink', safeAddress);
+  else runEditorCommand('insertHTML', `<a href="${escapeHTML(safeAddress)}" target="_blank" rel="noopener">${escapeHTML(address)}</a>`);
+}
+
+function insertAttachment(file) {
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    toast('Attachments must be smaller than 10 MB');
+    return;
+  }
+  const reader = new FileReader();
+  reader.addEventListener('load', () => {
+    const safeName = escapeHTML(file.name);
+    const markup = file.type.startsWith('image/')
+      ? `<figure class="attachment"><img src="${reader.result}" alt="${safeName}"><figcaption>${safeName}</figcaption></figure><p><br></p>`
+      : `<p class="file-attachment"><a href="${reader.result}" download="${safeName}">${icon('attach')}<span>${safeName}</span></a></p><p><br></p>`;
+    runEditorCommand('insertHTML', markup);
+    toast('Attachment added');
+  });
+  reader.readAsDataURL(file);
+}
+
+function showSlashMenu() {
+  const menu = $('#slash-menu');
+  const editorRect = $('#body-input').getBoundingClientRect();
+  menu.hidden = false;
+  menu.style.left = `${Math.min(editorRect.left + 14, innerWidth - 290)}px`;
+  menu.style.top = `${Math.min(editorRect.top + 52, innerHeight - 310)}px`;
+}
+
+function closeSlashMenu() {
+  $('#slash-menu').hidden = true;
+}
+
+function applySlashAction(action) {
+  document.execCommand('delete', false);
+  if (action === 'h2') runEditorCommand('formatBlock', 'h2');
+  if (action === 'ul') runEditorCommand('insertUnorderedList');
+  if (action === 'check') insertChecklist();
+  if (action === 'quote') runEditorCommand('formatBlock', 'blockquote');
+  if (action === 'code') runEditorCommand('formatBlock', 'pre');
+  closeSlashMenu();
 }
 
 function toast(message) {
@@ -600,7 +695,58 @@ $('#day-strip').addEventListener('click', (event) => {
   if (button) openDaily(button.dataset.day);
 });
 $('#title-input').addEventListener('input', (event) => updateSelected('title', event.target.value));
-$('#body-input').addEventListener('input', (event) => updateSelected('body', event.target.value));
+$('#body-input').addEventListener('input', saveRichEditor);
+$('#body-input').addEventListener('keydown', (event) => {
+  if (event.key === '/' && !event.metaKey && !event.ctrlKey) requestAnimationFrame(showSlashMenu);
+  if (event.key === 'Escape') closeSlashMenu();
+  if (event.key === 'Enter' && $('#slash-menu').hidden === false) {
+    event.preventDefault();
+    applySlashAction($('#slash-menu button').dataset.slash);
+  }
+});
+$('#body-input').addEventListener('paste', (event) => {
+  const html = event.clipboardData?.getData('text/html');
+  if (!html) return;
+  event.preventDefault();
+  const pasted = new DOMParser().parseFromString(html, 'text/html');
+  pasted.querySelectorAll('script,style,iframe,object,embed,form').forEach((element) => element.remove());
+  pasted.querySelectorAll('*').forEach((element) => {
+    [...element.attributes].forEach((attribute) => {
+      if (attribute.name.startsWith('on') || attribute.name === 'style') element.removeAttribute(attribute.name);
+    });
+    const href = element.getAttribute('href');
+    if (href && !/^(https?:|mailto:|#)/i.test(href)) element.removeAttribute('href');
+    const src = element.getAttribute('src');
+    if (src && !/^(https?:|data:image\/)/i.test(src)) element.removeAttribute('src');
+  });
+  document.execCommand('insertHTML', false, pasted.body.innerHTML);
+});
+$('.format-toolbar').addEventListener('click', (event) => {
+  const button = event.target.closest('button');
+  if (!button) return;
+  if (button.dataset.editorCommand) runEditorCommand(button.dataset.editorCommand);
+  if (button.dataset.blockCommand) runEditorCommand('formatBlock', button.dataset.blockCommand);
+  if (button.hasAttribute('data-insert-checklist')) insertChecklist();
+  if (button.hasAttribute('data-insert-link')) insertLink();
+  if (button.hasAttribute('data-attach')) $('#attachment-input').click();
+});
+$('#body-input').addEventListener('click', (event) => {
+  const checkbox = event.target.closest('.task-check');
+  if (!checkbox) return;
+  const item = checkbox.closest('li');
+  const checked = item.dataset.checked === 'true';
+  item.dataset.checked = String(!checked);
+  checkbox.setAttribute('aria-label', checked ? 'Mark task complete' : 'Mark task incomplete');
+  saveRichEditor();
+});
+$('#attachment-input').addEventListener('change', (event) => {
+  insertAttachment(event.target.files?.[0]);
+  event.target.value = '';
+});
+$('#slash-menu').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-slash]');
+  if (button) applySlashAction(button.dataset.slash);
+});
 $('#new-note-button').addEventListener('click', () => createNote());
 $('#empty-new').addEventListener('click', () => createNote());
 $('#search-trigger').addEventListener('click', () => openCommand());

@@ -14,7 +14,11 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 - Connections and backlinks using `[[Note title]]`
 - List and card views
 - Focus mode for uninterrupted writing
-- Automatic local saving with no account or server
+- Rich writing with headings, lists, checklists, quotes, code blocks, links, and attachments
+- Slash commands and a compact formatting toolbar
+- Native browser undo and redo
+- Automatic local saving in IndexedDB with no account or server
+- Revision snapshots and offline launch support
 - Complete JSON backup and restore
 - A GPU-rendered ambient light field with reduced-motion support
 - Responsive layouts for desktop, tablet, and mobile
@@ -46,6 +50,6 @@ Your notes stay in the browser storage for that address. Use the export button i
 
 ## Technical shape
 
-Jotfield uses semantic HTML, modern CSS, native JavaScript, WebGL, localStorage, and a reusable SVG icon system. There are no runtime packages and no build step.
+Jotfield uses semantic HTML, modern CSS, native JavaScript, WebGL, IndexedDB, a service worker, and a reusable SVG icon system. There are no runtime packages and no build step.
 
 Built by Anwar Creative Studio.

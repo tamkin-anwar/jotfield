@@ -14,7 +14,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237aa7ff' d='M32 3 58 18v28L32 61 6 46V18z'/%3E%3Cpath fill='%23fff' fill-opacity='.9' d='m32 10 18 10-18 10-18-10zm0 25 18-10v17L32 52z'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./jotfield-icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=foundation1" />
+    <link rel="stylesheet" href="./styles.css?v=writing1" />
   </head>
   <body>
     <canvas id="light-field" aria-hidden="true"></canvas>
@@ -43,6 +43,14 @@
       <symbol id="i-focus" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></symbol>
       <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
       <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1z"/></symbol>
+      <symbol id="i-bold" viewBox="0 0 24 24"><path d="M7 4h6a4 4 0 0 1 0 8H7zM7 12h7a4 4 0 0 1 0 8H7z"/></symbol>
+      <symbol id="i-italic" viewBox="0 0 24 24"><path d="M10 4h8M6 20h8M14 4 10 20"/></symbol>
+      <symbol id="i-list-bullet" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></symbol>
+      <symbol id="i-quote" viewBox="0 0 24 24"><path d="M5 7h5v5H6c0 3-1 5-3 6M14 7h5v5h-4c0 3-1 5-3 6"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1-1"/></symbol>
+      <symbol id="i-attach" viewBox="0 0 24 24"><path d="m8 12 6-6a4 4 0 0 1 6 6l-8 8a6 6 0 0 1-8-8l8-8"/></symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M5 12h8a6 6 0 0 1 6 6"/></symbol>
+      <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M19 12h-8a6 6 0 0 0-6 6"/></symbol>
     </svg>
 
     <div class="app-frame">
@@ -136,7 +144,23 @@
               <div class="note-date" id="note-date"></div>
               <input class="title-input" id="title-input" aria-label="Note title" placeholder="Untitled" autocomplete="off" />
               <div class="note-tags" id="note-tags"></div>
-              <textarea class="body-input" id="body-input" aria-label="Note content" placeholder="Start writing..." spellcheck="true"></textarea>
+              <div class="format-toolbar" role="toolbar" aria-label="Text formatting">
+                <button type="button" data-editor-command="bold" aria-label="Bold"><svg><use href="#i-bold"/></svg></button>
+                <button type="button" data-editor-command="italic" aria-label="Italic"><svg><use href="#i-italic"/></svg></button>
+                <span></span>
+                <button type="button" data-block-command="h2" aria-label="Heading">H</button>
+                <button type="button" data-editor-command="insertUnorderedList" aria-label="Bulleted list"><svg><use href="#i-list-bullet"/></svg></button>
+                <button type="button" data-insert-checklist aria-label="Checklist"><svg><use href="#i-check"/></svg></button>
+                <button type="button" data-block-command="blockquote" aria-label="Quote"><svg><use href="#i-quote"/></svg></button>
+                <button type="button" data-block-command="pre" aria-label="Code block"><span class="code-mark">&lt;/&gt;</span></button>
+                <span></span>
+                <button type="button" data-insert-link aria-label="Add link"><svg><use href="#i-link"/></svg></button>
+                <button type="button" data-attach aria-label="Attach file"><svg><use href="#i-attach"/></svg></button>
+                <span class="toolbar-spacer"></span>
+                <button type="button" data-editor-command="undo" aria-label="Undo"><svg><use href="#i-undo"/></svg></button>
+                <button type="button" data-editor-command="redo" aria-label="Redo"><svg><use href="#i-redo"/></svg></button>
+              </div>
+              <div class="body-input" id="body-input" contenteditable="true" role="textbox" aria-label="Note content" aria-multiline="true" data-placeholder="Start writing..." spellcheck="true"></div>
             </div>
             <aside class="connections" id="connections">
               <div class="connections-head"><svg><use href="#i-backlink"/></svg><span>Connections</span></div>
@@ -180,7 +204,15 @@
     </dialog>
 
     <input type="file" id="import-input" accept="application/json,.json" hidden />
+    <input type="file" id="attachment-input" accept="image/*,.pdf,.txt,.md,.doc,.docx" hidden />
+    <div class="slash-menu" id="slash-menu" hidden role="listbox" aria-label="Insert block">
+      <button type="button" data-slash="h2"><b>H</b><span><strong>Heading</strong><small>Large section title</small></span></button>
+      <button type="button" data-slash="ul"><b>•</b><span><strong>Bullet list</strong><small>Start an unordered list</small></span></button>
+      <button type="button" data-slash="check"><b>✓</b><span><strong>Checklist</strong><small>Track something to finish</small></span></button>
+      <button type="button" data-slash="quote"><b>“</b><span><strong>Quote</strong><small>Set a passage apart</small></span></button>
+      <button type="button" data-slash="code"><b>&lt;/&gt;</b><span><strong>Code</strong><small>Preserve spacing and syntax</small></span></button>
+    </div>
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
-    <script type="module" src="./app.js?v=foundation1"></script>
+    <script type="module" src="./app.js?v=writing1"></script>
   </body>
 </html>
