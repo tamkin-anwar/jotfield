@@ -14,7 +14,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237aa7ff' d='M32 3 58 18v28L32 61 6 46V18z'/%3E%3Cpath fill='%23fff' fill-opacity='.9' d='m32 10 18 10-18 10-18-10zm0 25 18-10v17L32 52z'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./jotfield-icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=everywhere2" />
+    <link rel="stylesheet" href="./styles.css?v=tooltip1" />
   </head>
   <body>
     <canvas id="light-field" aria-hidden="true"></canvas>
@@ -71,13 +71,13 @@
         </button>
         <div class="top-actions">
           <span class="save-state" id="save-state"><i></i> Saved locally</span>
-          <button class="round-button" id="export-button" type="button" aria-label="Export all notes" title="Export all notes">
+          <button class="round-button" id="export-button" type="button" aria-label="Export all notes">
             <svg><use href="#i-export"/></svg>
           </button>
-          <button class="round-button" id="import-button" type="button" aria-label="Import a Jotfield backup" title="Import a Jotfield backup">
+          <button class="round-button" id="import-button" type="button" aria-label="Import a Jotfield backup">
             <svg><use href="#i-import"/></svg>
           </button>
-          <button class="round-button" id="settings-button" type="button" aria-label="Open settings" title="Settings">
+          <button class="round-button" id="settings-button" type="button" aria-label="Open settings">
             <svg><use href="#i-settings"/></svg>
           </button>
           <button class="quick-jot-button" id="quick-jot-button" type="button"><svg><use href="#i-bolt"/></svg><span>Quick Jot</span><kbd>⇧⌘N</kbd></button>
@@ -154,7 +154,7 @@
                 <button id="map-button" type="button" aria-label="Open note map"><svg><use href="#i-map"/></svg></button>
                 <button id="favorite-button" type="button" aria-label="Favorite note"><svg><use href="#i-star"/></svg></button>
                 <button id="focus-button" type="button" aria-label="Focus on note"><svg><use href="#i-focus"/></svg></button>
-                <button id="more-button" type="button" aria-label="Note actions"><svg><use href="#i-more"/></svg></button>
+                <button id="more-button" type="button" aria-label="More note actions"><svg><use href="#i-more"/></svg></button>
               </div>
             </div>
             <div class="note-paper">
@@ -268,7 +268,8 @@
       <button type="button" data-slash="code"><b>&lt;/&gt;</b><span><strong>Code</strong><small>Preserve spacing and syntax</small></span></button>
     </div>
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
+    <div class="control-tooltip" id="control-tooltip" role="tooltip" hidden></div>
     <nav class="mobile-dock" aria-label="Mobile navigation"><button type="button" data-mobile-action="library"><svg><use href="#i-notes"/></svg><span>Library</span></button><button type="button" data-mobile-action="search"><svg><use href="#i-search"/></svg><span>Search</span></button><button class="capture" type="button" data-mobile-action="jot"><svg><use href="#i-bolt"/></svg><span>Jot</span></button><button type="button" data-mobile-action="plan"><svg><use href="#i-check"/></svg><span>Plan</span></button></nav>
-    <script type="module" src="./app.js?v=everywhere2"></script>
+    <script type="module" src="./app.js?v=tooltip1"></script>
   </body>
 </html>

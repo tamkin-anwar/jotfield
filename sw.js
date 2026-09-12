@@ -1,5 +1,5 @@
-const CACHE_NAME = 'jotfield-everywhere-2';
-const APP_SHELL = ['./', './index.html', './styles.css?v=everywhere2', './app.js?v=everywhere2', './manifest.webmanifest', './jotfield-icon.svg'];
+const CACHE_NAME = 'jotfield-tooltip-1';
+const APP_SHELL = ['./', './index.html', './styles.css?v=tooltip1', './app.js?v=tooltip1', './manifest.webmanifest', './jotfield-icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));

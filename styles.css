@@ -308,6 +308,8 @@ dialog::backdrop { background: rgba(2, 4, 9, 0.64); backdrop-filter: blur(8px); 
 .action-dialog button.danger { color: var(--danger); }
 .action-dialog svg { width: 15px; height: 15px; }
 .toast-region { position: fixed; z-index: 50; right: 25px; bottom: 24px; display: grid; gap: 8px; pointer-events: none; }
+.control-tooltip { position: fixed; z-index: 120; max-width: 230px; padding: 7px 10px; border: 1px solid var(--line-bright); border-radius: 8px; background: rgba(45,38,32,.96); color: #fffaf2; box-shadow: 0 9px 28px rgba(44,30,18,.2); font-size: 11px; font-weight: 600; line-height: 1.35; letter-spacing: .01em; pointer-events: auto; opacity: 0; transform: translateY(-3px) scale(.98); transition: opacity 120ms var(--ease), transform 120ms var(--ease); }
+.control-tooltip.visible { opacity: 1; transform: none; }
 .toast { padding: 10px 14px; border: 1px solid var(--line-bright); border-radius: 10px; background: rgba(17, 23, 36, 0.94); color: #b8c5d8; box-shadow: 0 15px 50px rgba(0, 0, 0, 0.35); font-size: 12px; animation: toast-in 220ms var(--ease); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(7px); } }
 

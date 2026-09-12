@@ -1401,6 +1401,74 @@ window.addEventListener('appinstalled', () => {
 window.addEventListener('online', () => { $('#device-status').textContent = 'Online. Open tabs stay in step instantly.'; });
 window.addEventListener('offline', () => { $('#device-status').textContent = 'Offline. Every local feature remains available.'; });
 
+function setupControlTooltips() {
+  const tooltip = $('#control-tooltip');
+  let trigger = null;
+  let showTimer = null;
+  let hideTimer = null;
+
+  const eligible = (target) => {
+    const button = target.closest?.('button[aria-label]');
+    return button && button.querySelector('svg') ? button : null;
+  };
+  const hide = (immediate = false) => {
+    clearTimeout(showTimer);
+    clearTimeout(hideTimer);
+    const finish = () => {
+      tooltip.classList.remove('visible');
+      tooltip.hidden = true;
+      trigger?.removeAttribute('aria-describedby');
+      trigger = null;
+    };
+    if (immediate) finish();
+    else hideTimer = setTimeout(finish, 100);
+  };
+  const show = (button, delay) => {
+    clearTimeout(showTimer);
+    clearTimeout(hideTimer);
+    showTimer = setTimeout(() => {
+      if (trigger && trigger !== button) trigger.removeAttribute('aria-describedby');
+      trigger = button;
+      tooltip.textContent = button.getAttribute('aria-label');
+      tooltip.hidden = false;
+      button.setAttribute('aria-describedby', 'control-tooltip');
+      const box = button.getBoundingClientRect();
+      const tip = tooltip.getBoundingClientRect();
+      const left = Math.min(window.innerWidth - tip.width - 10, Math.max(10, box.left + box.width / 2 - tip.width / 2));
+      const below = box.bottom + 9;
+      const top = below + tip.height <= window.innerHeight - 10 ? below : box.top - tip.height - 9;
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${Math.max(10, top)}px`;
+      requestAnimationFrame(() => tooltip.classList.add('visible'));
+    }, delay);
+  };
+
+  document.addEventListener('pointerover', (event) => {
+    const button = eligible(event.target);
+    if (button && event.pointerType !== 'touch') show(button, 380);
+  });
+  document.addEventListener('pointerout', (event) => {
+    const button = eligible(event.target);
+    if (button && !button.contains(event.relatedTarget)) hide();
+  });
+  document.addEventListener('focusin', (event) => {
+    const button = eligible(event.target);
+    if (button) show(button, 80);
+  });
+  document.addEventListener('focusout', (event) => {
+    if (eligible(event.target)) hide();
+  });
+  tooltip.addEventListener('pointerenter', () => clearTimeout(hideTimer));
+  tooltip.addEventListener('pointerleave', () => hide());
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && trigger) hide(true);
+  });
+  window.addEventListener('scroll', () => hide(true), true);
+  window.addEventListener('resize', () => hide(true));
+}
+
+setupControlTooltips();
+
 function startLightField() {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const canvas = $('#light-field');
