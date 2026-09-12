@@ -1,4 +1,5 @@
 import { createCloudClient, cloudConfiguration } from './src/cloud/client.js';
+import { accountLabel, createAccount, deleteCloudAccount, observeAccount, sendMagicLink, sendPasswordReset, signInWithPassword, signOut, updatePassword } from './src/cloud/auth.js';
 import { makeSyncEnvelope } from './src/cloud/contracts.js';
 import { transitionView } from './src/motion.js';
 
@@ -93,6 +94,8 @@ const cloudClientPromise = createCloudClient();
 const cloudReady = cloudConfiguration.enabled;
 document.documentElement.dataset.cloud = cloudReady ? 'ready' : 'local';
 cloudClientPromise.catch(() => { document.documentElement.dataset.cloud = 'unavailable'; });
+let accountSession = null;
+let accountMode = 'signin';
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 let themeChoice = localStorage.getItem(THEME_KEY) || 'system';
@@ -114,6 +117,47 @@ applyTheme();
 systemTheme.addEventListener('change', () => {
   if (themeChoice === 'system') applyTheme();
 });
+
+function accountMessage(target, message, tone = '') {
+  target.textContent = message;
+  target.dataset.tone = tone;
+}
+
+function setAccountPending(pending) {
+  $$('#account-dialog button, #account-dialog input').forEach((control) => { control.disabled = pending; });
+  $('#account-dialog').classList.toggle('pending', pending);
+}
+
+function renderAccount() {
+  if (!cloudReady) return;
+  const details = accountLabel(accountSession);
+  $('#account-button').hidden = false;
+  $('#account-entry').hidden = Boolean(accountSession);
+  $('#account-home').hidden = !accountSession;
+  $('#account-button-label').textContent = accountSession ? details.name : 'Account';
+  if (!accountSession) return;
+  $('#account-avatar').textContent = details.initial;
+  $('#account-display-name').textContent = details.name;
+  $('#account-address').textContent = details.email;
+  $('#account-verification').textContent = details.verified ? 'Verified' : 'Check email';
+  $('#account-verification').classList.toggle('waiting', !details.verified);
+  $('#account-note-count').textContent = `${state.notes.length} ${state.notes.length === 1 ? 'note' : 'notes'}`;
+}
+
+function setAccountMode(mode) {
+  accountMode = mode === 'create' ? 'create' : 'signin';
+  const creating = accountMode === 'create';
+  $('#account-signin-tab').classList.toggle('active', !creating);
+  $('#account-create-tab').classList.toggle('active', creating);
+  $('#account-signin-tab').setAttribute('aria-selected', String(!creating));
+  $('#account-create-tab').setAttribute('aria-selected', String(creating));
+  $('#account-name-field').hidden = !creating;
+  $('#account-name').required = creating;
+  $('#account-password').autocomplete = creating ? 'new-password' : 'current-password';
+  $('#account-submit').textContent = creating ? 'Create account' : 'Sign in';
+  $('#account-recovery').hidden = creating;
+  accountMessage($('#account-message'), '');
+}
 
 function loadState() {
   try {
@@ -1481,6 +1525,120 @@ $('#settings-button').addEventListener('click', () => {
   $('#settings-dialog').showModal();
 });
 $('#settings-close').addEventListener('click', () => $('#settings-dialog').close());
+$('#account-button').addEventListener('click', () => {
+  renderAccount();
+  $('#account-dialog').showModal();
+  requestAnimationFrame(() => (accountSession ? $('#account-signout') : $('#account-email')).focus());
+});
+$('#account-close').addEventListener('click', () => $('#account-dialog').close());
+$('#account-signin-tab').addEventListener('click', () => setAccountMode('signin'));
+$('#account-create-tab').addEventListener('click', () => setAccountMode('create'));
+$('#account-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const email = $('#account-email').value.trim();
+  const password = $('#account-password').value;
+  const name = $('#account-name').value.trim();
+  setAccountPending(true);
+  accountMessage($('#account-message'), accountMode === 'create' ? 'Creating your account...' : 'Signing in...');
+  try {
+    if (accountMode === 'create') {
+      const result = await createAccount(cloudClientPromise, { email, password, name });
+      if (!result.session) accountMessage($('#account-message'), 'Check your email to verify this account.', 'success');
+      else accountMessage($('#account-message'), 'Account created.', 'success');
+    } else {
+      await signInWithPassword(cloudClientPromise, email, password);
+      accountMessage($('#account-message'), 'Signed in.', 'success');
+    }
+    $('#account-password').value = '';
+  } catch (error) {
+    accountMessage($('#account-message'), error.message || 'Could not complete that request.', 'error');
+  } finally {
+    setAccountPending(false);
+  }
+});
+$('#account-magic').addEventListener('click', async () => {
+  const email = $('#account-email').value.trim();
+  if (!email || !$('#account-email').checkValidity()) { $('#account-email').reportValidity(); return; }
+  setAccountPending(true);
+  try {
+    await sendMagicLink(cloudClientPromise, email);
+    accountMessage($('#account-message'), 'Your private sign-in link is on its way.', 'success');
+  } catch (error) {
+    accountMessage($('#account-message'), error.message || 'Could not send the sign-in link.', 'error');
+  } finally {
+    setAccountPending(false);
+  }
+});
+$('#account-recovery').addEventListener('click', async () => {
+  const email = $('#account-email').value.trim();
+  if (!email || !$('#account-email').checkValidity()) { $('#account-email').reportValidity(); return; }
+  setAccountPending(true);
+  try {
+    await sendPasswordReset(cloudClientPromise, email);
+    accountMessage($('#account-message'), 'Password recovery instructions were sent.', 'success');
+  } catch (error) {
+    accountMessage($('#account-message'), error.message || 'Could not start password recovery.', 'error');
+  } finally {
+    setAccountPending(false);
+  }
+});
+$('#account-signout').addEventListener('click', async () => {
+  setAccountPending(true);
+  try { await signOut(cloudClientPromise); $('#account-dialog').close(); toast('Signed out on this device'); }
+  catch (error) { accountMessage($('#account-home-message'), error.message || 'Could not sign out.', 'error'); }
+  finally { setAccountPending(false); }
+});
+$('#account-signout-all').addEventListener('click', async () => {
+  setAccountPending(true);
+  try { await signOut(cloudClientPromise, 'global'); $('#account-dialog').close(); toast('Signed out everywhere'); }
+  catch (error) { accountMessage($('#account-home-message'), error.message || 'Could not end every session.', 'error'); }
+  finally { setAccountPending(false); }
+});
+$('#account-delete-open').addEventListener('click', () => {
+  $('#delete-account-confirmation').value = '';
+  $('#delete-account-dialog').showModal();
+  requestAnimationFrame(() => $('#delete-account-confirmation').focus());
+});
+$('#delete-account-cancel').addEventListener('click', () => $('#delete-account-dialog').close());
+$('#delete-account-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if ($('#delete-account-confirmation').value !== 'DELETE') { toast('Type DELETE to confirm'); return; }
+  const submit = event.submitter;
+  submit.disabled = true;
+  try {
+    await deleteCloudAccount(cloudClientPromise);
+    $('#delete-account-dialog').close();
+    $('#account-dialog').close();
+    toast('Cloud account deleted');
+  } catch (error) {
+    $('#delete-account-dialog').close();
+    accountMessage($('#account-home-message'), error.message || 'Could not delete the account.', 'error');
+  } finally {
+    submit.disabled = false;
+  }
+});
+$('#password-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const password = $('#new-password').value;
+  if (password !== $('#confirm-password').value) {
+    accountMessage($('#password-message'), 'The passwords do not match.', 'error');
+    return;
+  }
+  const submit = event.submitter;
+  submit.disabled = true;
+  accountMessage($('#password-message'), 'Saving your new password...');
+  try {
+    await updatePassword(cloudClientPromise, password);
+    $('#new-password').value = '';
+    $('#confirm-password').value = '';
+    $('#password-dialog').close();
+    toast('Password updated');
+  } catch (error) {
+    accountMessage($('#password-message'), error.message || 'Could not update the password.', 'error');
+  } finally {
+    submit.disabled = false;
+  }
+});
 $('#import-note-files').addEventListener('click', () => $('#note-files-input').click());
 $('#note-files-input').addEventListener('change', async (event) => {
   await importNoteFiles(event.target.files || []);
@@ -1870,6 +2028,17 @@ function startLightField() {
 
 startLightField();
 render();
+setAccountMode('signin');
+if (cloudReady) {
+  observeAccount(cloudClientPromise, (session, event) => {
+    accountSession = session;
+    renderAccount();
+    if (event === 'PASSWORD_RECOVERY' && !$('#password-dialog').open) {
+      $('#password-dialog').showModal();
+      requestAnimationFrame(() => $('#new-password').focus());
+    }
+  }).catch(() => { document.documentElement.dataset.cloud = 'unavailable'; });
+}
 hydrateDurableState();
 showSharedNote();
 handleLaunchIntent();

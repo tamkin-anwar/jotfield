@@ -57,6 +57,7 @@
       <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h7l-1 8 8-12h-7z"/></symbol>
       <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"/></symbol>
       <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.7 10.7 6.6-4.4M8.7 13.3l6.6 4.4"/></symbol>
+      <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5  7.5 0 0 1 15 0"/></symbol>
     </svg>
 
     <div class="app-frame">
@@ -80,6 +81,9 @@
           </button>
           <button class="round-button" id="settings-button" type="button" aria-label="Open settings">
             <svg><use href="#i-settings"/></svg>
+          </button>
+          <button class="account-button" id="account-button" type="button" aria-label="Open account" hidden>
+            <svg><use href="#i-person"/></svg><span id="account-button-label">Account</span>
           </button>
           <button class="quick-jot-button" id="quick-jot-button" type="button"><svg><use href="#i-bolt"/></svg><span>Quick Jot</span><kbd>⇧⌘N</kbd></button>
           <button class="new-note-button" id="new-note-button" type="button">
@@ -285,6 +289,55 @@
         <div class="share-head"><div><span>INBOX</span><h2>Save to Jotfield</h2></div><button id="capture-close" type="button" aria-label="Close capture"><svg><use href="#i-close"/></svg></button></div>
         <div class="capture-fields"><label><span>Title</span><input id="capture-title" autocomplete="off" /></label><label><span>Notes</span><textarea id="capture-text"></textarea></label><label><span>Source</span><input id="capture-url" type="url" /></label></div>
         <div class="capture-foot"><span>Review before saving</span><button type="submit"><svg><use href="#i-plus"/></svg>Save note</button></div>
+      </form>
+    </dialog>
+
+    <dialog class="account-dialog" id="account-dialog">
+      <div class="account-head">
+        <div class="account-brand"><i></i><span>Jotfield account</span></div>
+        <button id="account-close" type="button" aria-label="Close account"><svg><use href="#i-close"/></svg></button>
+      </div>
+      <section class="account-entry" id="account-entry">
+        <div class="account-intro"><span>YOUR NOTES, WHERE YOU ARE</span><h2>Keep your field close.</h2><p>Your notebook continues working on this device. An account adds a private identity for secure synchronization.</p></div>
+        <div class="account-tabs" role="tablist" aria-label="Account action">
+          <button class="active" id="account-signin-tab" type="button" role="tab" aria-selected="true">Sign in</button>
+          <button id="account-create-tab" type="button" role="tab" aria-selected="false">Create account</button>
+        </div>
+        <form class="account-form" id="account-form">
+          <label id="account-name-field" hidden><span>Name</span><input id="account-name" autocomplete="name" maxlength="80" placeholder="How you appear" /></label>
+          <label><span>Email</span><input id="account-email" type="email" autocomplete="email" required placeholder="you@example.com" /></label>
+          <label><span>Password</span><input id="account-password" type="password" autocomplete="current-password" minlength="12" required placeholder="At least 12 characters" /></label>
+          <button class="account-primary" id="account-submit" type="submit">Sign in</button>
+        </form>
+        <div class="account-options"><span>or</span></div>
+        <button class="account-secondary" id="account-magic" type="button">Email me a sign-in link</button>
+        <button class="account-text-button" id="account-recovery" type="button">Reset password</button>
+        <p class="account-message" id="account-message" role="status" aria-live="polite"></p>
+      </section>
+      <section class="account-home" id="account-home" hidden>
+        <div class="account-identity"><span class="account-avatar" id="account-avatar">J</span><div><strong id="account-display-name">Jotfield member</strong><span id="account-address"></span></div><b id="account-verification">Verified</b></div>
+        <div class="account-local-card"><div><span>ON THIS DEVICE</span><strong id="account-note-count">0 notes</strong></div><i></i><p>Your local notebook remains available whenever you sign out.</p></div>
+        <div class="account-security"><h3>Sessions</h3><p>End this session or sign out every device connected to your account.</p><div><button id="account-signout" type="button">Sign out here</button><button id="account-signout-all" type="button">Sign out everywhere</button></div></div>
+        <div class="account-danger"><div><h3>Delete account</h3><p>Permanently remove your cloud identity and cloud workspace. Notes stored only on this device remain here.</p></div><button id="account-delete-open" type="button">Delete</button></div>
+        <p class="account-message" id="account-home-message" role="status" aria-live="polite"></p>
+      </section>
+    </dialog>
+
+    <dialog class="delete-account-dialog" id="delete-account-dialog">
+      <form id="delete-account-form">
+        <span>PERMANENT ACTION</span><h2>Delete cloud account?</h2><p>This removes your cloud identity and cloud workspace. Type <strong>DELETE</strong> to continue.</p>
+        <input id="delete-account-confirmation" autocomplete="off" aria-label="Type DELETE to confirm" placeholder="DELETE" />
+        <div><button id="delete-account-cancel" type="button">Cancel</button><button class="danger" type="submit">Delete account</button></div>
+      </form>
+    </dialog>
+
+    <dialog class="password-dialog" id="password-dialog">
+      <form id="password-form">
+        <span>ACCOUNT RECOVERY</span><h2>Choose a new password.</h2><p>Use at least 12 characters that you do not use for another account.</p>
+        <label><span>New password</span><input id="new-password" type="password" autocomplete="new-password" minlength="12" required /></label>
+        <label><span>Confirm password</span><input id="confirm-password" type="password" autocomplete="new-password" minlength="12" required /></label>
+        <p class="account-message" id="password-message" role="status" aria-live="polite"></p>
+        <button class="account-primary" type="submit">Save new password</button>
       </form>
     </dialog>
 

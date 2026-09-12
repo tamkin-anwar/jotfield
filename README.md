@@ -43,6 +43,7 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 - Complete JSON backup and restore
 - A GPU-rendered ambient light field with reduced-motion support
 - Responsive layouts for desktop, tablet, and mobile
+- Account interface for verified email signup, password sign-in, magic links, recovery, session control, and secure cloud account deletion
 
 ## Product research
 
@@ -77,6 +78,8 @@ The production build uses Vite and creates a deployable `dist` directory. GitHub
 An optional Supabase client boundary is ready for the account batch. Without cloud configuration, Jotfield remains entirely local. The first database migration defines encrypted note records, workspace membership, trusted devices, wrapped keys, synchronization operations, and Row Level Security policies. It does not store readable note content.
 
 See [the production architecture](docs/architecture.md) for the security and synchronization boundaries.
+
+The account interface activates only in a configured cloud build. See [account deployment](docs/account-deployment.md) for the production requirements. Keeping it inactive until the backend policies and mail delivery are configured prevents a misleading or insecure signup experience.
 
 ## Technical shape
 

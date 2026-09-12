@@ -12,7 +12,7 @@ create table public.profiles (
 create table public.workspaces (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(name) between 1 and 80),
-  created_by uuid not null references auth.users(id),
+  created_by uuid not null references auth.users(id) on delete cascade,
   key_version integer not null default 1 check (key_version > 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -49,7 +49,7 @@ create table public.workspace_keys (
 create table public.notes (
   id uuid primary key,
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
-  author_id uuid not null references auth.users(id),
+  author_id uuid references auth.users(id) on delete set null,
   ciphertext text not null,
   nonce text not null,
   key_version integer not null check (key_version > 0),
@@ -62,7 +62,7 @@ create table public.notes (
 create table public.sync_operations (
   id uuid primary key,
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
-  actor_id uuid not null references auth.users(id),
+  actor_id uuid references auth.users(id) on delete set null,
   note_id uuid references public.notes(id) on delete cascade,
   operation_kind text not null check (char_length(operation_kind) between 1 and 60),
   encrypted_payload text not null,
