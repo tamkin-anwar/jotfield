@@ -14,7 +14,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237aa7ff' d='M32 3 58 18v28L32 61 6 46V18z'/%3E%3Cpath fill='%23fff' fill-opacity='.9' d='m32 10 18 10-18 10-18-10zm0 25 18-10v17L32 52z'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./jotfield-icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=everywhere1" />
+    <link rel="stylesheet" href="./styles.css?v=everywhere2" />
   </head>
   <body>
     <canvas id="light-field" aria-hidden="true"></canvas>
@@ -179,11 +179,6 @@
               </div>
               <div class="body-input" id="body-input" contenteditable="true" role="textbox" aria-label="Note content" aria-multiline="true" data-placeholder="Start writing..." spellcheck="true"></div>
             </div>
-            <aside class="connections" id="connections">
-              <div class="connections-head"><svg><use href="#i-backlink"/></svg><span>Connections</span></div>
-              <div id="backlink-list"></div>
-              <p class="connections-tip">Type [[ followed by a note title to connect ideas.</p>
-            </aside>
             <div class="statusbar">
               <span id="word-count">0 words</span><span>Markdown shortcuts</span><span id="edited-time">Edited now</span>
             </div>
@@ -274,6 +269,6 @@
     </div>
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
     <nav class="mobile-dock" aria-label="Mobile navigation"><button type="button" data-mobile-action="library"><svg><use href="#i-notes"/></svg><span>Library</span></button><button type="button" data-mobile-action="search"><svg><use href="#i-search"/></svg><span>Search</span></button><button class="capture" type="button" data-mobile-action="jot"><svg><use href="#i-bolt"/></svg><span>Jot</span></button><button type="button" data-mobile-action="plan"><svg><use href="#i-check"/></svg><span>Plan</span></button></nav>
-    <script type="module" src="./app.js?v=everywhere1"></script>
+    <script type="module" src="./app.js?v=everywhere2"></script>
   </body>
 </html>

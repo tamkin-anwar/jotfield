@@ -323,7 +323,6 @@ function saveRichEditor() {
   renderList();
   renderNav();
   renderInlineTags(note);
-  renderBacklinks(note);
   updateWordCount(note);
   $('#edited-time').textContent = 'Edited now';
 }
@@ -480,7 +479,6 @@ function renderEditor() {
   $('#favorite-button').classList.toggle('active', note.favorite);
   $('#favorite-button').querySelector('svg').style.fill = note.favorite ? 'rgba(255,92,53,.18)' : '';
   renderInlineTags(note);
-  renderBacklinks(note);
   updateWordCount(note);
   $('#edited-time').textContent = `Edited ${relativeTime(note.updated)}`;
 }
@@ -492,33 +490,6 @@ function renderInlineTags(note) {
     span.textContent = `#${tag}`;
     return span;
   }));
-}
-
-function renderBacklinks(note) {
-  const ownTitle = note.title.trim().toLowerCase();
-  const linked = new Set(linkedTitles(note));
-  const ownTags = new Set(extractTags(note));
-  const related = state.notes.filter((candidate) => candidate.id !== note.id && !candidate.deleted).map((candidate) => {
-    const outgoing = linked.has(candidate.title.trim().toLowerCase());
-    const incoming = linkedTitles(candidate).includes(ownTitle);
-    const shared = extractTags(candidate).filter((tag) => ownTags.has(tag));
-    return { candidate, outgoing, incoming, shared };
-  }).filter((item) => item.outgoing || item.incoming || item.shared.length).sort((a, b) => Number(b.incoming) - Number(a.incoming) || b.shared.length - a.shared.length).slice(0, 8);
-  $('#backlink-list').replaceChildren(...related.map(({ candidate, outgoing, incoming, shared }) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'backlink';
-    button.dataset.note = candidate.id;
-    const title = document.createElement('strong');
-    title.textContent = candidate.title || 'Untitled';
-    const reason = document.createElement('span');
-    reason.textContent = incoming ? 'Links here' : outgoing ? 'Linked from here' : `Shared #${shared[0]}`;
-    const preview = document.createElement('small');
-    preview.textContent = cleanPreview(candidate.body).slice(0, 72);
-    button.append(title, reason, preview);
-    return button;
-  }));
-  $('#connections').classList.toggle('visible', related.length > 0);
 }
 
 function renderMap() {
@@ -766,7 +737,6 @@ function updateSelected(field, value) {
   renderList();
   renderNav();
   renderInlineTags(note);
-  renderBacklinks(note);
   updateWordCount(note);
   $('#editor-path').lastChild.textContent = note.title || 'Untitled';
   $('#edited-time').textContent = 'Edited now';
@@ -1094,10 +1064,6 @@ $('#smart-list').addEventListener('click', (event) => {
 $('#note-list').addEventListener('click', (event) => {
   const card = event.target.closest('[data-note]');
   if (card) selectNote(card.dataset.note);
-});
-$('#backlink-list').addEventListener('click', (event) => {
-  const button = event.target.closest('[data-note]');
-  if (button) selectNote(button.dataset.note);
 });
 $('#day-strip').addEventListener('click', (event) => {
   const button = event.target.closest('[data-day]');
