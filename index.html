@@ -4,13 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#070b13" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta
       name="description"
       content="Jotfield is a private, local-first notebook for capturing ideas and finding their connections."
     />
     <title>Jotfield | A place for every thought</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237aa7ff' d='M32 3 58 18v28L32 61 6 46V18z'/%3E%3Cpath fill='%23fff' fill-opacity='.9' d='m32 10 18 10-18 10-18-10zm0 25 18-10v17L32 52z'/%3E%3C/svg%3E" />
-    <link rel="stylesheet" href="./styles.css?v=appearance1" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./jotfield-icon.svg" />
+    <link rel="stylesheet" href="./styles.css?v=foundation1" />
   </head>
   <body>
     <canvas id="light-field" aria-hidden="true"></canvas>
@@ -177,6 +181,6 @@
 
     <input type="file" id="import-input" accept="application/json,.json" hidden />
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
-    <script type="module" src="./app.js?v=appearance1"></script>
+    <script type="module" src="./app.js?v=foundation1"></script>
   </body>
 </html>

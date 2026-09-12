@@ -1,6 +1,9 @@
 const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
 const THEME_KEY = 'jotfield-appearance';
+const DB_NAME = 'jotfield-library';
+const DB_VERSION = 1;
+const REVISION_LIMIT = 100;
 const SPACE_COLORS = ['#7aa7ff', '#b295ff', '#70dded', '#77d6ad', '#f1bd70', '#ff8b93'];
 
 const $ = (selector) => document.querySelector(selector);
@@ -66,6 +69,7 @@ let layout = 'list';
 let saveTimer;
 let commandIndex = 0;
 let commandItems = [];
+let databasePromise;
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 let themeChoice = localStorage.getItem(THEME_KEY) || 'system';
@@ -97,12 +101,75 @@ function loadState() {
   return structuredClone(starterState);
 }
 
+function openDatabase() {
+  if (databasePromise) return databasePromise;
+  databasePromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.addEventListener('upgradeneeded', () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains('notebook')) database.createObjectStore('notebook');
+      if (!database.objectStoreNames.contains('revisions')) {
+        const revisions = database.createObjectStore('revisions', { keyPath: 'id' });
+        revisions.createIndex('created', 'created');
+        revisions.createIndex('noteId', 'noteId');
+      }
+    });
+    request.addEventListener('success', () => resolve(request.result));
+    request.addEventListener('error', () => reject(request.error));
+  });
+  return databasePromise;
+}
+
+function databaseRequest(request) {
+  return new Promise((resolve, reject) => {
+    request.addEventListener('success', () => resolve(request.result));
+    request.addEventListener('error', () => reject(request.error));
+  });
+}
+
+async function writeDurably(snapshot, revision) {
+  const database = await openDatabase();
+  const transaction = database.transaction(['notebook', 'revisions'], 'readwrite');
+  transaction.objectStore('notebook').put(snapshot, 'current');
+  if (revision) transaction.objectStore('revisions').put(revision);
+  const revisions = transaction.objectStore('revisions');
+  const keys = await databaseRequest(revisions.index('created').getAllKeys());
+  keys.slice(0, Math.max(0, keys.length - REVISION_LIMIT)).forEach((key) => revisions.delete(key));
+}
+
+async function hydrateDurableState() {
+  try {
+    const database = await openDatabase();
+    const transaction = database.transaction('notebook', 'readonly');
+    const durable = await databaseRequest(transaction.objectStore('notebook').get('current'));
+    if (durable?.notes && durable?.spaces) {
+      const durableTime = new Date(durable.modifiedAt || 0).getTime();
+      const currentTime = new Date(state.modifiedAt || 0).getTime();
+      if (durableTime > currentTime) {
+        state = durable;
+        selectedId = state.notes.find((note) => note.id === selectedId)?.id || state.notes[0]?.id || null;
+        render();
+        toast('Notebook recovered');
+      }
+    } else {
+      await writeDurably(structuredClone(state));
+    }
+  } catch {
+    toast('Using browser backup storage');
+  }
+}
+
 function persist() {
   $('#save-state').classList.add('saving');
   $('#save-state').lastChild.textContent = ' Saving';
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    state.modifiedAt = now();
+    const snapshot = structuredClone(state);
+    const note = currentNote();
+    const revision = note ? { id: `${Date.now()}-${note.id}`, noteId: note.id, created: now(), note: structuredClone(note) } : null;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    writeDurably(snapshot, revision).catch(() => {});
     $('#save-state').classList.remove('saving');
     $('#save-state').lastChild.textContent = ' Saved locally';
   }, 220);
@@ -708,3 +775,8 @@ function startLightField() {
 
 startLightField();
 render();
+hydrateDurableState();
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
