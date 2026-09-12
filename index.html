@@ -14,7 +14,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237aa7ff' d='M32 3 58 18v28L32 61 6 46V18z'/%3E%3Cpath fill='%23fff' fill-opacity='.9' d='m32 10 18 10-18 10-18-10zm0 25 18-10v17L32 52z'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./jotfield-icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=sharing1" />
+    <link rel="stylesheet" href="./styles.css?v=ecosystem1" />
   </head>
   <body>
     <canvas id="light-field" aria-hidden="true"></canvas>
@@ -272,12 +272,26 @@
         <div class="settings-copy"><h3>This device</h3><p id="device-status">Changes appear instantly in every open Jotfield tab.</p></div>
         <button type="button" class="install-button" id="install-button"><svg><use href="#i-bolt"/></svg><span>Install Jotfield</span></button>
       </section>
+      <section class="settings-section ecosystem-settings">
+        <div class="settings-copy"><h3>Bring things in</h3><p>Import Markdown, text, or HTML notes. Add the clipper to capture a page or selection from your browser.</p></div>
+        <div class="ecosystem-actions"><button type="button" id="import-note-files"><svg><use href="#i-import"/></svg><span>Import notes</span></button><button type="button" id="copy-clipper"><svg><use href="#i-bolt"/></svg><span>Copy web clipper</span></button><button type="button" id="export-calendar"><svg><use href="#i-calendar"/></svg><span>Export calendar</span></button></div>
+        <p class="ecosystem-status" id="ecosystem-status">The web clipper saves the page title, address, and selected text.</p>
+      </section>
       <p class="settings-foot">Local use never requires an account.</p>
+    </dialog>
+
+    <dialog class="capture-dialog" id="capture-dialog">
+      <form id="capture-form">
+        <div class="share-head"><div><span>INBOX</span><h2>Save to Jotfield</h2></div><button id="capture-close" type="button" aria-label="Close capture"><svg><use href="#i-close"/></svg></button></div>
+        <div class="capture-fields"><label><span>Title</span><input id="capture-title" autocomplete="off" /></label><label><span>Notes</span><textarea id="capture-text"></textarea></label><label><span>Source</span><input id="capture-url" type="url" /></label></div>
+        <div class="capture-foot"><span>Review before saving</span><button type="submit"><svg><use href="#i-plus"/></svg>Save note</button></div>
+      </form>
     </dialog>
 
     <input type="file" id="import-input" accept="application/json,.json" hidden />
     <input type="file" id="attachment-input" accept="image/*,.pdf,.txt,.md,.doc,.docx" hidden />
     <input type="file" id="vault-input" accept="application/jotfield-vault,.jotvault" hidden />
+    <input type="file" id="note-files-input" accept=".md,.markdown,.txt,.html,.htm,text/markdown,text/plain,text/html" multiple hidden />
     <div class="slash-menu" id="slash-menu" hidden role="listbox" aria-label="Insert block">
       <button type="button" data-slash="h2"><b>H</b><span><strong>Heading</strong><small>Large section title</small></span></button>
       <button type="button" data-slash="ul"><b>•</b><span><strong>Bullet list</strong><small>Start an unordered list</small></span></button>
@@ -288,6 +302,6 @@
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
     <div class="control-tooltip" id="control-tooltip" role="tooltip" hidden></div>
     <nav class="mobile-dock" aria-label="Mobile navigation"><button type="button" data-mobile-action="library"><svg><use href="#i-notes"/></svg><span>Library</span></button><button type="button" data-mobile-action="search"><svg><use href="#i-search"/></svg><span>Search</span></button><button class="capture" type="button" data-mobile-action="jot"><svg><use href="#i-bolt"/></svg><span>Jot</span></button><button type="button" data-mobile-action="plan"><svg><use href="#i-check"/></svg><span>Plan</span></button></nav>
-    <script type="module" src="./app.js?v=sharing1"></script>
+    <script type="module" src="./app.js?v=ecosystem1"></script>
   </body>
 </html>

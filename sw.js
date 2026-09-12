@@ -1,5 +1,5 @@
-const CACHE_NAME = 'jotfield-sharing-1';
-const APP_SHELL = ['./', './index.html', './styles.css?v=sharing1', './app.js?v=sharing1', './manifest.webmanifest', './jotfield-icon.svg'];
+const CACHE_NAME = 'jotfield-ecosystem-1';
+const APP_SHELL = ['./', './index.html', './styles.css?v=ecosystem1', './app.js?v=ecosystem1', './manifest.webmanifest', './jotfield-icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
@@ -12,6 +12,17 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (event.request.method === 'POST' && url.pathname.endsWith('/share-target')) {
+    event.respondWith((async () => {
+      const form = await event.request.formData();
+      const payload = { title: String(form.get('title') || ''), text: String(form.get('text') || ''), url: String(form.get('url') || '') };
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put('./pending-share', new Response(JSON.stringify(payload), { headers: { 'Content-Type': 'application/json' } }));
+      return Response.redirect(new URL('./?capture=pending', self.registration.scope).href, 303);
+    })());
+    return;
+  }
   if (event.request.method !== 'GET') return;
   event.respondWith(fetch(event.request).then((response) => {
     const copy = response.clone();

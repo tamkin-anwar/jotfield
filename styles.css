@@ -781,8 +781,26 @@ html[data-theme="dark"] .task-row strong, html[data-theme="dark"] .planner-empty
 .vault-actions button:hover, .install-button:hover { border-color: rgba(255,92,53,.3); color: #a33c26; }
 .vault-actions svg, .install-button svg { width: 14px; height: 14px; }
 .device-settings { grid-template-columns: 1fr auto; }
+.ecosystem-settings { display: block; }
+.ecosystem-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.ecosystem-actions button { min-height: 39px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 9px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.36); color: #655a50; font: inherit; font-size: 10px; cursor: pointer; }
+.ecosystem-actions button:hover { border-color: rgba(255,92,53,.3); color: #a33c26; }
+.ecosystem-actions svg { width: 14px; height: 14px; }
+.ecosystem-status { margin: 10px 0 0; color: var(--faint); font-size: 9px; line-height: 1.5; }
+.capture-dialog { width: min(590px, calc(100vw - 28px)); padding: 0; border: 1px solid rgba(54,45,34,.15); border-radius: 22px; background: rgba(251,247,238,.98); color: var(--ink); box-shadow: 0 32px 110px rgba(62,42,20,.28); backdrop-filter: blur(34px); }
+.capture-dialog[open] { animation: reveal 180ms var(--ease); }
+.capture-fields { display: grid; gap: 15px; padding: 22px; }
+.capture-fields label { display: grid; gap: 6px; }
+.capture-fields label > span { color: var(--faint); font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.capture-fields input, .capture-fields textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; outline: 0; background: rgba(255,255,255,.4); color: var(--ink); font: inherit; font-size: 12px; }
+.capture-fields textarea { min-height: 150px; resize: vertical; line-height: 1.55; }
+.capture-fields input:focus, .capture-fields textarea:focus { border-color: rgba(255,92,53,.38); box-shadow: 0 0 0 3px rgba(255,92,53,.07); }
+.capture-foot { height: 61px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; border-top: 1px solid var(--line); color: var(--faint); font-size: 9px; }
+.capture-foot button { height: 36px; display: flex; align-items: center; gap: 6px; padding: 0 14px; border: 0; border-radius: 9px; background: var(--accent); color: white; font: inherit; font-size: 10px; font-weight: 650; cursor: pointer; }
+.capture-foot svg { width: 14px; height: 14px; }
 .mobile-dock { display: none; }
-html[data-theme="dark"] .vault-pass input, html[data-theme="dark"] .vault-actions button, html[data-theme="dark"] .install-button { background: rgba(255,245,230,.035); color: #d8cec3; }
+html[data-theme="dark"] .vault-pass input, html[data-theme="dark"] .vault-actions button, html[data-theme="dark"] .install-button, html[data-theme="dark"] .ecosystem-actions button, html[data-theme="dark"] .capture-fields input, html[data-theme="dark"] .capture-fields textarea { background: rgba(255,245,230,.035); color: #d8cec3; }
+html[data-theme="dark"] .capture-dialog { border-color: var(--line-bright); background: rgba(31,27,23,.98); box-shadow: 0 32px 110px rgba(0,0,0,.58); }
 
 @media (max-width: 620px) {
   body { padding-bottom: 64px; }
@@ -792,6 +810,7 @@ html[data-theme="dark"] .vault-pass input, html[data-theme="dark"] .vault-action
   .mobile-dock svg { width: 17px; height: 17px; }
   .mobile-dock .capture { background: var(--accent); color: white; }
   .settings-section { grid-template-columns: 1fr; }
+  .ecosystem-actions { grid-template-columns: 1fr; }
   .device-settings { grid-template-columns: 1fr; }
   .install-button { justify-self: start; }
   html[data-theme="dark"] .mobile-dock { background: rgba(28,24,21,.93); }

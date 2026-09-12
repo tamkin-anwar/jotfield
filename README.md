@@ -24,6 +24,10 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 - Encrypted read-only links for sharing a single note without an account
 - Native device sharing with a copy-link fallback
 - Clean shared-note reading view and Markdown downloads
+- Multi-file imports for Markdown, plain text, and HTML
+- A copyable browser clipper for page titles, addresses, and selected text
+- Installed-app sharing that can receive text and links from other apps
+- Standards-based iCalendar export for scheduled and recurring tasks
 - Daily, weekly, and monthly recurring tasks that advance when completed
 - Favorites, archive, recently deleted, restore, and permanent deletion
 - Connections and backlinks using `[[Note title]]`

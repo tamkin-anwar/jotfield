@@ -307,7 +307,7 @@ function safeSharedBody(html) {
 
 async function makePrivateNoteUrl(note) {
   const space = state.spaces.find((item) => item.id === note.space)?.name || 'Note';
-  const payload = new TextEncoder().encode(JSON.stringify({ product: 'Jotfield Shared Note', version: 1, title: note.title || 'Untitled', body: shareableBody(note.body), created: note.created, updated: note.updated, space }));
+  const payload = new TextEncoder().encode(JSON.stringify({ product: 'Jotfield Shared Note', version: 1, title: note.title || 'Untitled', body: shareableBody(note.html || plainTextToHTML(note.body)), created: note.created, updated: note.updated, space }));
   const packed = await compressSharePayload(payload);
   const rawKey = crypto.getRandomValues(new Uint8Array(32));
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -335,6 +335,143 @@ async function readPrivateNoteUrl() {
 function noteText(note) {
   const body = new DOMParser().parseFromString(note.body || '', 'text/html').body.textContent?.trim() || '';
   return `${note.title || 'Untitled'}\n\n${body}`;
+}
+
+function plainTextHTML(text) {
+  return text.split(/\n{2,}/).map((block) => `<p>${escapeHTML(block).replaceAll('\n', '<br>')}</p>`).join('');
+}
+
+function markdownHTML(markdown) {
+  const lines = markdown.replace(/\r/g, '').split('\n');
+  const output = [];
+  let list = false;
+  let code = false;
+  const closeList = () => { if (list) { output.push('</ul>'); list = false; } };
+  lines.forEach((line) => {
+    if (/^```/.test(line)) {
+      closeList();
+      output.push(code ? '</code></pre>' : '<pre><code>');
+      code = !code;
+      return;
+    }
+    if (code) { output.push(`${escapeHTML(line)}\n`); return; }
+    if (/^[-*] /.test(line)) {
+      if (!list) { output.push('<ul>'); list = true; }
+      output.push(`<li>${escapeHTML(line.slice(2))}</li>`);
+      return;
+    }
+    closeList();
+    if (/^### /.test(line)) output.push(`<h3>${escapeHTML(line.slice(4))}</h3>`);
+    else if (/^## /.test(line)) output.push(`<h2>${escapeHTML(line.slice(3))}</h2>`);
+    else if (/^# /.test(line)) output.push(`<h2>${escapeHTML(line.slice(2))}</h2>`);
+    else if (/^> /.test(line)) output.push(`<blockquote>${escapeHTML(line.slice(2))}</blockquote>`);
+    else if (line.trim()) output.push(`<p>${escapeHTML(line)}</p>`);
+  });
+  closeList();
+  if (code) output.push('</code></pre>');
+  return output.join('');
+}
+
+async function importNoteFiles(files) {
+  const accepted = [...files].slice(0, 50).filter((file) => /\.(md|markdown|txt|html?)$/i.test(file.name) && file.size <= 2 * 1024 * 1024);
+  if (!accepted.length) { toast('Choose Markdown, text, or HTML files under 2 MB'); return; }
+  const imported = [];
+  for (const file of accepted) {
+    const raw = await file.text();
+    const extension = file.name.split('.').pop().toLowerCase();
+    const html = ['html', 'htm'].includes(extension) ? safeSharedBody(raw) : ['md', 'markdown'].includes(extension) ? markdownHTML(raw) : plainTextHTML(raw);
+    const body = new DOMParser().parseFromString(html, 'text/html').body.textContent?.trim() || '';
+    imported.push({ id: uid(), title: file.name.replace(/\.[^.]+$/, '').slice(0, 120), body, html, space: 'personal', favorite: false, archived: false, deleted: false, daily: false, day: null, created: now(), updated: new Date(file.lastModified || Date.now()).toISOString() });
+  }
+  state.notes.unshift(...imported);
+  selectedId = imported[0].id;
+  currentView = 'all'; currentSpace = null; currentTag = null; currentSmart = null;
+  persist(); render();
+  $('#settings-dialog').close();
+  toast(`${imported.length} ${imported.length === 1 ? 'note' : 'notes'} imported`);
+}
+
+function openCapture(data) {
+  $('#capture-title').value = (data.title || 'Web capture').slice(0, 160);
+  $('#capture-text').value = (data.text || '').slice(0, 20000);
+  $('#capture-url').value = /^https?:\/\//i.test(data.url || '') ? data.url : '';
+  if (!$('#capture-dialog').open) $('#capture-dialog').showModal();
+  requestAnimationFrame(() => $('#capture-title').focus());
+}
+
+async function handleLaunchIntent() {
+  const query = new URLSearchParams(location.search);
+  if (location.hash.startsWith('#clip=')) {
+    try {
+      const data = JSON.parse(new TextDecoder().decode(base64UrlToBytes(location.hash.slice(6))));
+      openCapture(data);
+      history.replaceState(null, '', location.pathname);
+    } catch { toast('This web capture is not valid'); }
+    return;
+  }
+  if (query.get('capture') === 'pending') {
+    try {
+      const response = await fetch('./pending-share');
+      if (!response.ok) throw new Error('Missing shared content');
+      openCapture(await response.json());
+      const keys = await caches.keys();
+      await Promise.all(keys.map(async (key) => (await caches.open(key)).delete('./pending-share')));
+    } catch { toast('Shared content could not be opened'); }
+    history.replaceState(null, '', location.pathname);
+  } else if (query.get('capture') === '1') {
+    openCapture({ title: query.get('title'), text: query.get('text'), url: query.get('url') });
+    history.replaceState(null, '', location.pathname);
+  } else if (query.get('quick') === '1') {
+    $('#quick-dialog').showModal();
+    history.replaceState(null, '', location.pathname);
+    requestAnimationFrame(() => $('#quick-input').focus());
+  } else if (query.get('new') === '1') {
+    history.replaceState(null, '', location.pathname);
+    createNote();
+  }
+}
+
+function webClipperCode() {
+  const base = `${location.origin}${location.pathname}`;
+  return `javascript:(()=>{const d={title:document.title,text:String(getSelection()).slice(0,6000),url:location.href};const b=btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(d)))).replaceAll('+','-').replaceAll('/','_').replace(/=+$/g,'');open('${base}#clip='+b,'_blank')})()`;
+}
+
+function calendarDate(value) {
+  return new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+function calendarText(value) {
+  return String(value).replaceAll('\\', '\\\\').replaceAll('\n', '\\n').replaceAll(',', '\\,').replaceAll(';', '\\;');
+}
+
+function foldCalendarLine(line) {
+  const rows = [];
+  let row = '';
+  for (const character of line) {
+    const prefix = rows.length ? ' ' : '';
+    if (new TextEncoder().encode(`${prefix}${row}${character}`).length > 74) {
+      rows.push(`${prefix}${row}`);
+      row = character;
+    } else row += character;
+  }
+  rows.push(`${rows.length ? ' ' : ''}${row}`);
+  return rows.join('\r\n');
+}
+
+function exportTaskCalendar() {
+  const tasks = state.tasks.filter((task) => !task.completed && task.due);
+  if (!tasks.length) { toast('No scheduled tasks to export'); return; }
+  const stamp = calendarDate(now());
+  const events = tasks.flatMap((task) => {
+    const start = new Date(task.due);
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
+    const repeat = task.repeat === 'daily' ? 'RRULE:FREQ=DAILY' : task.repeat === 'weekly' ? 'RRULE:FREQ=WEEKLY' : task.repeat === 'monthly' ? 'RRULE:FREQ=MONTHLY' : null;
+    return ['BEGIN:VEVENT', `UID:${task.id}@jotfield.local`, `DTSTAMP:${stamp}`, `DTSTART:${calendarDate(start)}`, `DTEND:${calendarDate(end)}`, `SUMMARY:${calendarText(task.title)}`, ...(repeat ? [repeat] : []), 'END:VEVENT'];
+  });
+  const calendar = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Jotfield//Tasks//EN', 'CALSCALE:GREGORIAN', ...events, 'END:VCALENDAR', ''].map(foldCalendarLine).join('\r\n');
+  const url = URL.createObjectURL(new Blob([calendar], { type: 'text/calendar;charset=utf-8' }));
+  const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'jotfield-tasks.ics'; anchor.click(); URL.revokeObjectURL(url);
+  toast(`${tasks.length} scheduled ${tasks.length === 1 ? 'task' : 'tasks'} exported`);
 }
 
 async function copyText(value) {
@@ -828,7 +965,7 @@ function selectNote(id, focus = false) {
 function createNote(options = {}) {
   const space = options.space || currentSpace || state.spaces[0]?.id || 'personal';
   const note = {
-    id: uid(), title: options.title || '', body: options.body || '', space,
+    id: uid(), title: options.title || '', body: options.body || '', html: options.html || '', space,
     favorite: false, archived: false, deleted: false, daily: Boolean(options.daily),
     day: options.day || null, created: now(), updated: now(),
   };
@@ -1333,6 +1470,31 @@ $('#settings-button').addEventListener('click', () => {
   $('#settings-dialog').showModal();
 });
 $('#settings-close').addEventListener('click', () => $('#settings-dialog').close());
+$('#import-note-files').addEventListener('click', () => $('#note-files-input').click());
+$('#note-files-input').addEventListener('change', async (event) => {
+  await importNoteFiles(event.target.files || []);
+  event.target.value = '';
+});
+$('#copy-clipper').addEventListener('click', async () => {
+  try {
+    await copyText(webClipperCode());
+    $('#ecosystem-status').textContent = 'Clipper copied. Create a browser bookmark and paste it into the address field.';
+    toast('Web clipper copied');
+  } catch { toast('Could not copy the web clipper'); }
+});
+$('#export-calendar').addEventListener('click', exportTaskCalendar);
+$('#capture-close').addEventListener('click', () => $('#capture-dialog').close());
+$('#capture-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const title = $('#capture-title').value.trim() || 'Web capture';
+  const text = $('#capture-text').value.trim();
+  const source = $('#capture-url').value.trim();
+  const sourceLine = /^https?:\/\//i.test(source) ? `<p><a href="${escapeHTML(source)}" target="_blank" rel="noopener">Open source</a></p>` : '';
+  const body = [text, source].filter(Boolean).join('\n\n');
+  $('#capture-dialog').close();
+  createNote({ title, body, html: `${plainTextHTML(text)}${sourceLine}`, space: 'personal' });
+  toast('Capture saved');
+});
 $('#vault-export').addEventListener('click', async () => {
   const passphrase = $('#vault-passphrase').value;
   if (passphrase.length < 10) { toast('Use at least 10 characters'); return; }
@@ -1433,7 +1595,7 @@ $('#shared-note-copy').addEventListener('click', async () => {
   try { await copyText(noteText(openedSharedNote)); toast('Note text copied'); }
   catch { toast('Could not copy the note'); }
 });
-window.addEventListener('hashchange', showSharedNote);
+window.addEventListener('hashchange', () => { showSharedNote(); handleLaunchIntent(); });
 $('#focus-button').addEventListener('click', () => {
   $('#editor').classList.toggle('focused');
   $('#focus-button').classList.toggle('active');
@@ -1699,6 +1861,7 @@ startLightField();
 render();
 hydrateDurableState();
 showSharedNote();
+handleLaunchIntent();
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
