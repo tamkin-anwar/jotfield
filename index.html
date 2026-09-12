@@ -317,6 +317,13 @@
       <section class="account-home" id="account-home" hidden>
         <div class="account-identity"><span class="account-avatar" id="account-avatar">J</span><div><strong id="account-display-name">Jotfield member</strong><span id="account-address"></span></div><b id="account-verification">Verified</b></div>
         <div class="account-local-card"><div><span>ON THIS DEVICE</span><strong id="account-note-count">0 notes</strong></div><i></i><p>Your local notebook remains available whenever you sign out.</p></div>
+        <div class="account-sync-card">
+          <div><h3>Encrypted sync</h3><p id="cloud-sync-status" data-state="off">Sign in to use encrypted sync.</p></div>
+          <label><span>Sync passphrase</span><input id="cloud-sync-passphrase" type="password" autocomplete="off" minlength="12" placeholder="At least 12 characters" /></label>
+          <label><span>Confirm passphrase</span><input id="cloud-sync-confirm" type="password" autocomplete="off" minlength="12" placeholder="Enter it again" /></label>
+          <div class="account-sync-actions"><button id="cloud-sync-unlock" type="button">Turn on sync</button><button id="cloud-sync-lock" type="button">Forget this device</button></div>
+          <small>This passphrase encrypts notes before they leave your device. Jotfield cannot recover it.</small>
+        </div>
         <div class="account-security"><h3>Sessions</h3><p>End this session or sign out every device connected to your account.</p><div><button id="account-signout" type="button">Sign out here</button><button id="account-signout-all" type="button">Sign out everywhere</button></div></div>
         <div class="account-danger"><div><h3>Delete account</h3><p>Permanently remove your cloud identity and cloud workspace. Notes stored only on this device remain here.</p></div><button id="account-delete-open" type="button">Delete</button></div>
         <p class="account-message" id="account-home-message" role="status" aria-live="polite"></p>

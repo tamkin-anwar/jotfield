@@ -1,13 +1,14 @@
 import { createCloudClient, cloudConfiguration } from './src/cloud/client.js';
 import { accountLabel, createAccount, deleteCloudAccount, observeAccount, sendMagicLink, sendPasswordReset, signInWithPassword, signOut, updatePassword } from './src/cloud/auth.js';
 import { makeSyncEnvelope } from './src/cloud/contracts.js';
+import { createEncryptedSync } from './src/cloud/sync.js';
 import { transitionView } from './src/motion.js';
 
 const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
 const THEME_KEY = 'jotfield-appearance';
 const DB_NAME = 'jotfield-library';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const REVISION_LIMIT = 100;
 const SPACE_COLORS = ['#7aa7ff', '#b295ff', '#70dded', '#77d6ad', '#f1bd70', '#ff8b93'];
 
@@ -96,6 +97,7 @@ document.documentElement.dataset.cloud = cloudReady ? 'ready' : 'local';
 cloudClientPromise.catch(() => { document.documentElement.dataset.cloud = 'unavailable'; });
 let accountSession = null;
 let accountMode = 'signin';
+let cloudSync;
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 let themeChoice = localStorage.getItem(THEME_KEY) || 'system';
@@ -144,6 +146,28 @@ function renderAccount() {
   $('#account-note-count').textContent = `${state.notes.length} ${state.notes.length === 1 ? 'note' : 'notes'}`;
 }
 
+function setCloudSyncStatus(status, detail = '') {
+  const label = $('#cloud-sync-status');
+  const action = $('#cloud-sync-unlock');
+  if (!label || !action) return;
+  const copy = {
+    off: 'Sign in to use encrypted sync.',
+    locked: 'Enter your sync passphrase to open this device.',
+    syncing: 'Encrypting and syncing...',
+    synced: 'Encrypted and up to date.',
+    error: detail || 'Sync needs attention.',
+  };
+  label.textContent = copy[status] || copy.off;
+  label.dataset.state = status;
+  action.textContent = status === 'synced' ? 'Sync now' : 'Turn on sync';
+  const saveState = $('#save-state');
+  saveState.classList.toggle('cloud-syncing', status === 'syncing');
+  saveState.classList.toggle('cloud-synced', status === 'synced');
+  if (status === 'syncing') saveState.lastChild.textContent = ' Encrypting';
+  if (status === 'synced') saveState.lastChild.textContent = ' Encrypted sync';
+  if (status === 'error' || status === 'locked' || status === 'off') saveState.lastChild.textContent = ' Saved locally';
+}
+
 function setAccountMode(mode) {
   accountMode = mode === 'create' ? 'create' : 'signin';
   const creating = accountMode === 'create';
@@ -180,6 +204,7 @@ function openDatabase() {
         revisions.createIndex('created', 'created');
         revisions.createIndex('noteId', 'noteId');
       }
+      if (!database.objectStoreNames.contains('secrets')) database.createObjectStore('secrets');
     });
     request.addEventListener('success', () => resolve(request.result));
     request.addEventListener('error', () => reject(request.error));
@@ -239,9 +264,18 @@ function persist() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
     writeDurably(snapshot, revision).catch(() => {});
     deviceChannel?.postMessage(makeSyncEnvelope('notebook.changed', snapshot));
+    cloudSync?.schedule();
     $('#save-state').classList.remove('saving');
-    $('#save-state').lastChild.textContent = ' Saved locally';
+    $('#save-state').lastChild.textContent = cloudSync?.isUnlocked() ? ' Waiting to sync' : ' Saved locally';
   }, 220);
+}
+
+function applyCloudNotebook(notebook) {
+  state = notebook;
+  selectedId = state.notes.some((note) => note.id === selectedId) ? selectedId : state.notes[0]?.id || null;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  writeDurably(structuredClone(state)).catch(() => {});
+  render();
 }
 
 function mergeNotebook(local, incoming) {
@@ -1531,6 +1565,26 @@ $('#account-button').addEventListener('click', () => {
   requestAnimationFrame(() => (accountSession ? $('#account-signout') : $('#account-email')).focus());
 });
 $('#account-close').addEventListener('click', () => $('#account-dialog').close());
+$('#cloud-sync-unlock').addEventListener('click', async () => {
+  if (cloudSync.isUnlocked()) { await cloudSync.push(); return; }
+  const passphrase = $('#cloud-sync-passphrase').value;
+  const confirmation = $('#cloud-sync-confirm').value;
+  if (passphrase.length < 12) { $('#cloud-sync-passphrase').reportValidity(); return; }
+  if (passphrase !== confirmation) { setCloudSyncStatus('error', 'The sync passphrases do not match.'); $('#cloud-sync-confirm').focus(); return; }
+  $('#cloud-sync-unlock').disabled = true;
+  try {
+    await cloudSync.unlock(passphrase);
+    $('#cloud-sync-passphrase').value = '';
+    $('#cloud-sync-confirm').value = '';
+  } catch (error) {
+    setCloudSyncStatus('error', error.name === 'OperationError' ? 'That sync passphrase could not open this notebook.' : error.message);
+  } finally { $('#cloud-sync-unlock').disabled = false; }
+});
+$('#cloud-sync-lock').addEventListener('click', async () => {
+  await cloudSync.lock();
+  $('#cloud-sync-passphrase').value = '';
+  $('#cloud-sync-confirm').value = '';
+});
 $('#account-signin-tab').addEventListener('click', () => setAccountMode('signin'));
 $('#account-create-tab').addEventListener('click', () => setAccountMode('create'));
 $('#account-form').addEventListener('submit', async (event) => {
@@ -2029,10 +2083,19 @@ function startLightField() {
 startLightField();
 render();
 setAccountMode('signin');
+cloudSync = createEncryptedSync({
+  clientPromise: cloudClientPromise,
+  getNotebook: () => structuredClone(state),
+  mergeNotebook,
+  applyNotebook: applyCloudNotebook,
+  setStatus: setCloudSyncStatus,
+  openDatabase,
+});
 if (cloudReady) {
   observeAccount(cloudClientPromise, (session, event) => {
     accountSession = session;
     renderAccount();
+    cloudSync.start(session).catch((error) => setCloudSyncStatus('error', error.message));
     if (event === 'PASSWORD_RECOVERY' && !$('#password-dialog').open) {
       $('#password-dialog').showModal();
       requestAnimationFrame(() => $('#new-password').focus());

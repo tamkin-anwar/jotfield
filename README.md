@@ -44,6 +44,7 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 - A GPU-rendered ambient light field with reduced-motion support
 - Responsive layouts for desktop, tablet, and mobile
 - Account interface for verified email signup, password sign-in, magic links, recovery, session control, and secure cloud account deletion
+- Optional end-to-end encrypted notebook sync with a separate passphrase that never leaves the device
 
 ## Product research
 

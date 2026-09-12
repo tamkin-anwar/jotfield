@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1 --port 3000",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
-    "check": "node --check app.js && node --check src/cloud/client.js && node --check src/cloud/auth.js && node --check src/cloud/contracts.js && node --check src/motion.js && node scripts/check-writing.mjs"
+    "check": "node --check app.js && node --check src/cloud/client.js && node --check src/cloud/auth.js && node --check src/cloud/contracts.js && node --check src/cloud/sync.js && node --check src/motion.js && node scripts/check-writing.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
