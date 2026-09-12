@@ -7,12 +7,17 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 ## What is here
 
 - Instant note capture with `Command N`
+- Quick Jot capture with `Shift Command N`
 - Full notebook search and navigation with `Command K`
 - Relevance-ranked search with title, tag, recent, and attachment filters
 - Highlighted matches with space and edit-time context
 - Spaces for broad areas and inline hashtags for lightweight structure
 - Smart Fields for loose thoughts, open tasks, and attachments
 - Daily notes through a seven-day date strip
+- A task planner with agenda and month views
+- Natural date recognition for today, tomorrow, weekdays, times, and repeat schedules
+- Local reminders with optional browser notifications while Jotfield is open
+- Daily, weekly, and monthly recurring tasks that advance when completed
 - Favorites, archive, recently deleted, restore, and permanent deletion
 - Connections and backlinks using `[[Note title]]`
 - Related-note context through links and shared tags

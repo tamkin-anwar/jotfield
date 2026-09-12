@@ -14,7 +14,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237aa7ff' d='M32 3 58 18v28L32 61 6 46V18z'/%3E%3Cpath fill='%23fff' fill-opacity='.9' d='m32 10 18 10-18 10-18-10zm0 25 18-10v17L32 52z'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./jotfield-icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=retrieval1" />
+    <link rel="stylesheet" href="./styles.css?v=daily1" />
   </head>
   <body>
     <canvas id="light-field" aria-hidden="true"></canvas>
@@ -54,6 +54,8 @@
       <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
       <symbol id="i-map" viewBox="0 0 24 24"><circle cx="6" cy="7" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="m8 7 8-1M7 9l4 7M17 8l-4 8"/></symbol>
       <symbol id="i-field" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM9 4v16M9 9h10"/></symbol>
+      <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h7l-1 8 8-12h-7z"/></symbol>
+      <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"/></symbol>
     </svg>
 
     <div class="app-frame">
@@ -78,6 +80,7 @@
           <button class="round-button" id="settings-button" type="button" aria-label="Open settings" title="Settings">
             <svg><use href="#i-settings"/></svg>
           </button>
+          <button class="quick-jot-button" id="quick-jot-button" type="button"><svg><use href="#i-bolt"/></svg><span>Quick Jot</span><kbd>⇧⌘N</kbd></button>
           <button class="new-note-button" id="new-note-button" type="button">
             <svg><use href="#i-plus"/></svg><span>New note</span><kbd>⌘ N</kbd>
           </button>
@@ -91,6 +94,7 @@
             <button class="rail-item" data-view="all" type="button"><svg><use href="#i-notes"/></svg><span>All notes</span><b id="count-all">0</b></button>
             <button class="rail-item" data-view="favorites" type="button"><svg><use href="#i-star"/></svg><span>Favorites</span><b id="count-favorites">0</b></button>
             <button class="rail-item" data-view="daily" type="button"><svg><use href="#i-calendar"/></svg><span>Daily notes</span></button>
+            <button class="rail-item" id="planner-button" type="button"><svg><use href="#i-check"/></svg><span>Plan</span><b id="count-due">0</b></button>
           </nav>
 
           <div class="rail-section">
@@ -209,6 +213,26 @@
       <p class="map-foot">Select a thought to open it. Lines show explicit links and shared tags.</p>
     </dialog>
 
+    <dialog class="quick-dialog" id="quick-dialog">
+      <form id="quick-form">
+        <div class="quick-head"><span>QUICK JOT</span><button type="button" id="quick-close" aria-label="Close Quick Jot"><svg><use href="#i-close"/></svg></button></div>
+        <textarea id="quick-input" aria-label="Quick note" placeholder="Catch the thought before it moves..."></textarea>
+        <div class="quick-foot"><span>Saved to Personal</span><button type="submit">Keep note <kbd>⌘↵</kbd></button></div>
+      </form>
+    </dialog>
+
+    <dialog class="planner-dialog" id="planner-dialog">
+      <div class="planner-head"><div><span>YOUR FIELD</span><h2>Plan</h2></div><div class="planner-tabs"><button class="active" type="button" data-plan-view="agenda">Agenda</button><button type="button" data-plan-view="calendar">Month</button></div><button id="planner-close" type="button" aria-label="Close Plan"><svg><use href="#i-close"/></svg></button></div>
+      <form class="task-capture" id="task-form">
+        <input id="task-title" required autocomplete="off" placeholder="Add a task, try “Review notes tomorrow at 9am”" />
+        <input id="task-date" type="datetime-local" aria-label="Due date and time" />
+        <select id="task-repeat" aria-label="Repeat"><option value="none">No repeat</option><option value="daily">Every day</option><option value="weekly">Every week</option><option value="monthly">Every month</option></select>
+        <button type="submit"><svg><use href="#i-plus"/></svg><span>Add</span></button>
+      </form>
+      <div class="planner-body" id="planner-body"></div>
+      <p class="planner-foot">Tasks and reminders stay on this device. Notifications appear while Jotfield is open when permission is enabled.</p>
+    </dialog>
+
     <dialog class="action-dialog" id="action-dialog">
       <form method="dialog" id="action-form"></form>
     </dialog>
@@ -239,6 +263,6 @@
       <button type="button" data-slash="code"><b>&lt;/&gt;</b><span><strong>Code</strong><small>Preserve spacing and syntax</small></span></button>
     </div>
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
-    <script type="module" src="./app.js?v=retrieval1"></script>
+    <script type="module" src="./app.js?v=daily1"></script>
   </body>
 </html>

@@ -11,7 +11,12 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 const icon = (name) => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
-const todayKey = (date = new Date()) => date.toISOString().slice(0, 10);
+const todayKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const starterState = {
   spaces: [
@@ -58,6 +63,7 @@ const starterState = {
       updated: now(),
     },
   ],
+  tasks: [],
 };
 
 let state = loadState();
@@ -72,6 +78,8 @@ let commandIndex = 0;
 let commandItems = [];
 let searchScope = 'all';
 let retrievalIndex = null;
+let planView = 'agenda';
+let planMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let databasePromise;
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
@@ -99,7 +107,7 @@ function loadState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
     const parsed = JSON.parse(saved);
-    if (parsed && Array.isArray(parsed.notes) && Array.isArray(parsed.spaces)) return parsed;
+    if (parsed && Array.isArray(parsed.notes) && Array.isArray(parsed.spaces)) return { ...parsed, tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [] };
   } catch {}
   return structuredClone(starterState);
 }
@@ -146,6 +154,7 @@ async function hydrateDurableState() {
     const transaction = database.transaction('notebook', 'readonly');
     const durable = await databaseRequest(transaction.objectStore('notebook').get('current'));
     if (durable?.notes && durable?.spaces) {
+      durable.tasks = Array.isArray(durable.tasks) ? durable.tasks : [];
       const durableTime = new Date(durable.modifiedAt || 0).getTime();
       const currentTime = new Date(state.modifiedAt || 0).getTime();
       if (durableTime > currentTime) {
@@ -293,6 +302,7 @@ function renderNav() {
   $('#count-unlinked').textContent = live.filter((note) => !noteIsLinked(note)).length;
   $('#count-tasks').textContent = live.filter(noteHasOpenTasks).length;
   $('#count-attachments').textContent = live.filter(noteHasAttachments).length;
+  $('#count-due').textContent = state.tasks.filter((task) => !task.completed && task.due && new Date(task.due) < new Date(startOfDay().getTime() + 86400000)).length;
   $('#storage-count').textContent = `${state.notes.length} ${state.notes.length === 1 ? 'note' : 'notes'}`;
 
   $('#space-list').replaceChildren(...state.spaces.map((space) => {
@@ -506,6 +516,136 @@ function renderMap() {
 function openMap() {
   renderMap();
   $('#map-dialog').showModal();
+}
+
+function startOfDay(date = new Date()) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function parseTaskLanguage(value) {
+  let title = value.trim();
+  const due = new Date();
+  due.setSeconds(0, 0);
+  let hasDate = false;
+  let repeat = 'none';
+  if (/\bevery day\b/i.test(title)) repeat = 'daily';
+  if (/\bevery week\b/i.test(title)) repeat = 'weekly';
+  if (/\bevery month\b/i.test(title)) repeat = 'monthly';
+  if (/\btomorrow\b/i.test(title)) { due.setDate(due.getDate() + 1); hasDate = true; }
+  else if (/\btoday\b/i.test(title)) hasDate = true;
+  const weekday = title.match(/\b(?:next\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i);
+  if (weekday) {
+    const target = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(weekday[1].toLowerCase());
+    let distance = (target - due.getDay() + 7) % 7 || 7;
+    due.setDate(due.getDate() + distance);
+    hasDate = true;
+  }
+  const time = title.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i);
+  if (time) {
+    let hour = Number(time[1]);
+    const minute = Number(time[2] || 0);
+    if (time[3]?.toLowerCase() === 'pm' && hour < 12) hour += 12;
+    if (time[3]?.toLowerCase() === 'am' && hour === 12) hour = 0;
+    due.setHours(hour, minute, 0, 0);
+    hasDate = true;
+  } else if (hasDate) due.setHours(9, 0, 0, 0);
+  title = title.replace(/\b(?:today|tomorrow|(?:next\s+)?(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)|every\s+(?:day|week|month)|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b/gi, '').replace(/\s{2,}/g, ' ').trim();
+  return { title: title || value.trim(), due: hasDate ? due.toISOString() : null, repeat };
+}
+
+function taskDueLabel(task) {
+  if (!task.due) return 'Anytime';
+  const due = new Date(task.due);
+  const today = startOfDay();
+  const distance = Math.round((startOfDay(due) - today) / 86400000);
+  const day = distance === 0 ? 'Today' : distance === 1 ? 'Tomorrow' : distance === -1 ? 'Yesterday' : due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return `${day} · ${due.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+}
+
+function advanceRecurringTask(task) {
+  const due = new Date(task.due || now());
+  do {
+    if (task.repeat === 'daily') due.setDate(due.getDate() + 1);
+    if (task.repeat === 'weekly') due.setDate(due.getDate() + 7);
+    if (task.repeat === 'monthly') due.setMonth(due.getMonth() + 1);
+  } while (due <= new Date());
+  task.due = due.toISOString();
+  task.completed = false;
+}
+
+function renderPlanner() {
+  const body = $('#planner-body');
+  body.replaceChildren();
+  if (planView === 'calendar') {
+    const calendar = document.createElement('section');
+    calendar.className = 'month-view';
+    const head = document.createElement('div');
+    head.className = 'month-head';
+    const previous = document.createElement('button'); previous.type = 'button'; previous.dataset.monthMove = '-1'; previous.textContent = '‹';
+    const title = document.createElement('strong'); title.textContent = planMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    const next = document.createElement('button'); next.type = 'button'; next.dataset.monthMove = '1'; next.textContent = '›';
+    head.append(previous, title, next);
+    const grid = document.createElement('div');
+    grid.className = 'month-grid';
+    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach((name) => { const label = document.createElement('span'); label.className = 'month-weekday'; label.textContent = name; grid.append(label); });
+    const first = new Date(planMonth); first.setDate(1 - first.getDay());
+    for (let index = 0; index < 42; index += 1) {
+      const day = new Date(first); day.setDate(first.getDate() + index);
+      const cell = document.createElement('button'); cell.type = 'button'; cell.className = `month-day${day.getMonth() !== planMonth.getMonth() ? ' muted' : ''}${todayKey(day) === todayKey() ? ' today' : ''}`;
+      cell.dataset.calendarDay = todayKey(day);
+      const number = document.createElement('b'); number.textContent = day.getDate(); cell.append(number);
+      const count = state.tasks.filter((task) => !task.completed && task.due && todayKey(new Date(task.due)) === todayKey(day)).length;
+      if (count) { const dots = document.createElement('i'); dots.textContent = `${count}`; cell.append(dots); }
+      grid.append(cell);
+    }
+    calendar.append(head, grid); body.append(calendar); return;
+  }
+  const tasks = [...state.tasks].sort((a, b) => Number(a.completed) - Number(b.completed) || (a.due ? new Date(a.due) : Infinity) - (b.due ? new Date(b.due) : Infinity));
+  const groups = [
+    ['Overdue', (task) => !task.completed && task.due && new Date(task.due) < startOfDay()],
+    ['Today', (task) => !task.completed && task.due && todayKey(new Date(task.due)) === todayKey()],
+    ['Upcoming', (task) => !task.completed && task.due && new Date(task.due) >= new Date(startOfDay().getTime() + 86400000)],
+    ['Anytime', (task) => !task.completed && !task.due],
+    ['Completed', (task) => task.completed],
+  ];
+  groups.forEach(([name, predicate]) => {
+    const matches = tasks.filter(predicate);
+    if (!matches.length) return;
+    const section = document.createElement('section'); section.className = 'task-group';
+    const heading = document.createElement('h3'); heading.textContent = name; section.append(heading);
+    matches.forEach((task) => {
+      const row = document.createElement('div'); row.className = `task-row${task.completed ? ' completed' : ''}`; row.dataset.task = task.id;
+      const check = document.createElement('button'); check.type = 'button'; check.className = 'plan-check'; check.dataset.completeTask = task.id; check.setAttribute('aria-label', task.completed ? 'Restore task' : 'Complete task');
+      const copy = document.createElement('div'); const title = document.createElement('strong'); title.textContent = task.title;
+      const meta = document.createElement('span'); meta.textContent = taskDueLabel(task);
+      if (task.repeat !== 'none') { const repeat = document.createElement('em'); repeat.textContent = ` · ${task.repeat}`; meta.append(repeat); }
+      copy.append(title, meta);
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'task-remove'; remove.dataset.removeTask = task.id; remove.setAttribute('aria-label', 'Remove task'); remove.textContent = '×';
+      row.append(check, copy, remove); section.append(row);
+    });
+    body.append(section);
+  });
+  if (!tasks.length) {
+    const empty = document.createElement('div'); empty.className = 'planner-empty'; empty.innerHTML = `${icon('check')}<strong>Your field is clear</strong><span>Add the next thing worth doing.</span>`; body.append(empty);
+  }
+}
+
+function openPlanner(date = null) {
+  planView = 'agenda';
+  $$('[data-plan-view]').forEach((button) => button.classList.toggle('active', button.dataset.planView === planView));
+  if (date) $('#task-date').value = `${date}T09:00`;
+  renderPlanner();
+  $('#planner-dialog').showModal();
+  requestAnimationFrame(() => $('#task-title').focus());
+}
+
+function scheduleReminderCheck() {
+  const due = state.tasks.filter((task) => !task.completed && task.due && !task.notified && new Date(task.due) <= new Date());
+  due.forEach((task) => {
+    task.notified = true;
+    if ('Notification' in window && Notification.permission === 'granted') new Notification(task.title, { body: 'Due in Jotfield', icon: './jotfield-icon.svg' });
+  });
+  if (due.length) persist();
 }
 
 function updateWordCount(note) {
@@ -802,7 +942,7 @@ function importNotes(file) {
     try {
       const data = JSON.parse(reader.result);
       if (!Array.isArray(data.notes) || !Array.isArray(data.spaces)) throw new Error('Invalid backup');
-      state = { notes: data.notes, spaces: data.spaces };
+      state = { notes: data.notes, spaces: data.spaces, tasks: Array.isArray(data.tasks) ? data.tasks : [] };
       selectedId = state.notes.find((note) => !note.deleted)?.id || state.notes[0]?.id || null;
       currentView = 'all';
       currentSpace = null;
@@ -955,6 +1095,76 @@ $('#slash-menu').addEventListener('click', (event) => {
 $('#new-note-button').addEventListener('click', () => createNote());
 $('#empty-new').addEventListener('click', () => createNote());
 $('#search-trigger').addEventListener('click', () => openCommand());
+$('#quick-jot-button').addEventListener('click', () => {
+  $('#quick-dialog').showModal();
+  requestAnimationFrame(() => $('#quick-input').focus());
+});
+$('#quick-close').addEventListener('click', () => $('#quick-dialog').close());
+$('#quick-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const value = $('#quick-input').value.trim();
+  if (!value) return;
+  const [first, ...rest] = value.split('\n');
+  const title = first.length <= 72 ? first : `${first.slice(0, 69)}...`;
+  createNote({ title, body: rest.join('\n').trim(), space: 'personal' });
+  $('#quick-input').value = '';
+  $('#quick-dialog').close();
+  toast('Quick Jot saved');
+});
+$('#quick-input').addEventListener('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') $('#quick-form').requestSubmit();
+});
+$('#planner-button').addEventListener('click', () => openPlanner());
+$('#planner-close').addEventListener('click', () => $('#planner-dialog').close());
+$('.planner-tabs').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-plan-view]');
+  if (!button) return;
+  planView = button.dataset.planView;
+  $$('[data-plan-view]').forEach((item) => item.classList.toggle('active', item === button));
+  renderPlanner();
+});
+$('#task-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const parsed = parseTaskLanguage($('#task-title').value);
+  const manualDate = $('#task-date').value;
+  const manualRepeat = $('#task-repeat').value;
+  state.tasks.push({ id: uid(), title: parsed.title, due: manualDate ? new Date(manualDate).toISOString() : parsed.due, repeat: manualRepeat !== 'none' ? manualRepeat : parsed.repeat, completed: false, created: now(), notified: false });
+  $('#task-title').value = '';
+  $('#task-date').value = '';
+  $('#task-repeat').value = 'none';
+  persist();
+  renderNav();
+  renderPlanner();
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+});
+$('#planner-body').addEventListener('click', (event) => {
+  const complete = event.target.closest('[data-complete-task]');
+  const remove = event.target.closest('[data-remove-task]');
+  const move = event.target.closest('[data-month-move]');
+  const day = event.target.closest('[data-calendar-day]');
+  if (complete) {
+    const task = state.tasks.find((item) => item.id === complete.dataset.completeTask);
+    if (task) {
+      if (!task.completed && task.repeat !== 'none') advanceRecurringTask(task);
+      else task.completed = !task.completed;
+      task.notified = false;
+      persist(); renderNav(); renderPlanner();
+    }
+  }
+  if (remove) {
+    state.tasks = state.tasks.filter((task) => task.id !== remove.dataset.removeTask);
+    persist(); renderNav(); renderPlanner();
+  }
+  if (move) {
+    planMonth.setMonth(planMonth.getMonth() + Number(move.dataset.monthMove));
+    planMonth = new Date(planMonth.getFullYear(), planMonth.getMonth(), 1);
+    renderPlanner();
+  }
+  if (day) {
+    $('#task-date').value = `${day.dataset.calendarDay}T09:00`;
+    $('#task-title').focus();
+  }
+});
 $('#export-button').addEventListener('click', exportNotes);
 $('#import-button').addEventListener('click', () => $('#import-input').click());
 $('#settings-button').addEventListener('click', () => {
@@ -1086,13 +1296,19 @@ window.addEventListener('keydown', (event) => {
   }
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
     event.preventDefault();
-    createNote();
+    if (event.shiftKey) {
+      $('#quick-dialog').showModal();
+      requestAnimationFrame(() => $('#quick-input').focus());
+    } else createNote();
   }
   if (event.key === 'Escape' && $('#editor').classList.contains('focused')) {
     $('#editor').classList.remove('focused');
     $('#focus-button').classList.remove('active');
   }
 });
+
+scheduleReminderCheck();
+setInterval(scheduleReminderCheck, 30000);
 
 function startLightField() {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
