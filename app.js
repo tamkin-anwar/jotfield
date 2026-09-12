@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
+const THEME_KEY = 'jotfield-appearance';
 const SPACE_COLORS = ['#7aa7ff', '#b295ff', '#70dded', '#77d6ad', '#f1bd70', '#ff8b93'];
 
 const $ = (selector) => document.querySelector(selector);
@@ -65,6 +66,27 @@ let layout = 'list';
 let saveTimer;
 let commandIndex = 0;
 let commandItems = [];
+
+const systemTheme = matchMedia('(prefers-color-scheme: dark)');
+let themeChoice = localStorage.getItem(THEME_KEY) || 'system';
+
+function applyTheme(choice = themeChoice) {
+  themeChoice = ['system', 'light', 'dark'].includes(choice) ? choice : 'system';
+  const resolved = themeChoice === 'system' ? (systemTheme.matches ? 'dark' : 'light') : themeChoice;
+  document.documentElement.dataset.theme = resolved;
+  document.documentElement.dataset.themeChoice = themeChoice;
+  document.documentElement.style.colorScheme = resolved;
+  $$('[data-theme-choice]').forEach((button) => {
+    const active = button.dataset.themeChoice === themeChoice;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-checked', String(active));
+  });
+}
+
+applyTheme();
+systemTheme.addEventListener('change', () => {
+  if (themeChoice === 'system') applyTheme();
+});
 
 function loadState() {
   try {
@@ -517,6 +539,17 @@ $('#empty-new').addEventListener('click', () => createNote());
 $('#search-trigger').addEventListener('click', () => openCommand());
 $('#export-button').addEventListener('click', exportNotes);
 $('#import-button').addEventListener('click', () => $('#import-input').click());
+$('#settings-button').addEventListener('click', () => {
+  applyTheme();
+  $('#settings-dialog').showModal();
+});
+$('#settings-close').addEventListener('click', () => $('#settings-dialog').close());
+$('.appearance-picker').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-theme-choice]');
+  if (!button) return;
+  localStorage.setItem(THEME_KEY, button.dataset.themeChoice);
+  applyTheme(button.dataset.themeChoice);
+});
 $('#import-input').addEventListener('change', (event) => {
   const file = event.target.files?.[0];
   if (file) importNotes(file);
@@ -624,14 +657,16 @@ function startLightField() {
   const gl = canvas.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'high-performance' });
   if (!gl) return;
   const vertex = `attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}`;
-  const fragment = `precision highp float;uniform vec2 r;uniform float t;
+  const fragment = `precision highp float;uniform vec2 r;uniform float t;uniform float d;
     float bloom(vec2 p,vec2 c,float s){return s/max(dot(p-c,p-c),.12);}
     void main(){vec2 uv=(gl_FragCoord.xy-.5*r)/min(r.x,r.y);
     float grain=(sin(uv.x*91.0+uv.y*57.0)+sin(uv.y*113.0-uv.x*41.0))*.0015;
     float a=bloom(uv,vec2(-.72+.1*sin(t*.045),.48),.032);
     float b=bloom(uv,vec2(.78,.28+.08*cos(t*.04)),.025);
     float c=bloom(uv,vec2(.2,-.82),.02);
-    vec3 col=vec3(.91,.875,.81)+a*vec3(.16,.035,.0)+b*vec3(.0,.08,.16)+c*vec3(.11,.15,.0)+grain;
+    vec3 lightCol=vec3(.91,.875,.81)+a*vec3(.16,.035,.0)+b*vec3(.0,.08,.16)+c*vec3(.11,.15,.0)+grain;
+    vec3 darkCol=vec3(.055,.049,.043)+a*vec3(.19,.035,.0)+b*vec3(.015,.07,.17)+c*vec3(.09,.12,.0)+grain*.35;
+    vec3 col=mix(lightCol,darkCol,d);
     gl_FragColor=vec4(col,1.);}`;
   const compile = (type, source) => {
     const shader = gl.createShader(type);
@@ -652,6 +687,7 @@ function startLightField() {
   gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
   const resolution = gl.getUniformLocation(program, 'r');
   const time = gl.getUniformLocation(program, 't');
+  const darkness = gl.getUniformLocation(program, 'd');
   const resize = () => {
     const scale = Math.min(devicePixelRatio, 2);
     canvas.width = Math.round(innerWidth * scale);
@@ -663,6 +699,7 @@ function startLightField() {
   const frame = (stamp) => {
     gl.uniform2f(resolution, canvas.width, canvas.height);
     gl.uniform1f(time, stamp / 1000);
+    gl.uniform1f(darkness, document.documentElement.dataset.theme === 'dark' ? 1 : 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(frame);
   };
