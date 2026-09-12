@@ -8,10 +8,15 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 
 - Instant note capture with `Command N`
 - Full notebook search and navigation with `Command K`
+- Relevance-ranked search with title, tag, recent, and attachment filters
+- Highlighted matches with space and edit-time context
 - Spaces for broad areas and inline hashtags for lightweight structure
+- Smart Fields for loose thoughts, open tasks, and attachments
 - Daily notes through a seven-day date strip
 - Favorites, archive, recently deleted, restore, and permanent deletion
 - Connections and backlinks using `[[Note title]]`
+- Related-note context through links and shared tags
+- A visual constellation for navigating connected thoughts
 - List and card views
 - Focus mode for uninterrupted writing
 - Rich writing with headings, lists, checklists, quotes, code blocks, links, and attachments

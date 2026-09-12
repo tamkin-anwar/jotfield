@@ -64,11 +64,14 @@ let state = loadState();
 let currentView = 'now';
 let currentSpace = null;
 let currentTag = null;
+let currentSmart = null;
 let selectedId = state.notes.find((note) => note.id === 'welcome')?.id || state.notes[0]?.id || null;
 let layout = 'list';
 let saveTimer;
 let commandIndex = 0;
 let commandItems = [];
+let searchScope = 'all';
+let retrievalIndex = null;
 let databasePromise;
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
@@ -191,6 +194,20 @@ function linkedTitles(note) {
   return [...(note?.body.matchAll(/\[\[([^\]]+)\]\]/g) || [])].map((match) => match[1].trim().toLowerCase());
 }
 
+function noteHasOpenTasks(note) {
+  if (note.html) return /class="task-list"[\s\S]*?data-checked="false"/.test(note.html);
+  return /(^|\n)\s*\[ \]/m.test(note.body);
+}
+
+function noteHasAttachments(note) {
+  return /class="(?:attachment|file-attachment)"/.test(note.html || '');
+}
+
+function noteIsLinked(note) {
+  const title = note.title.trim().toLowerCase();
+  return linkedTitles(note).length > 0 || state.notes.some((candidate) => candidate.id !== note.id && linkedTitles(candidate).includes(title));
+}
+
 function relativeTime(value) {
   const minutes = Math.floor((Date.now() - new Date(value).getTime()) / 60000);
   if (minutes < 1) return 'now';
@@ -243,6 +260,9 @@ function visibleNotes() {
     .filter((note) => {
       if (currentSpace && note.space !== currentSpace) return false;
       if (currentTag && !extractTags(note).includes(currentTag)) return false;
+      if (currentSmart === 'unlinked' && noteIsLinked(note)) return false;
+      if (currentSmart === 'tasks' && !noteHasOpenTasks(note)) return false;
+      if (currentSmart === 'attachments' && !noteHasAttachments(note)) return false;
       if (currentView === 'trash') return note.deleted;
       if (note.deleted) return false;
       if (currentView === 'archive') return note.archived;
@@ -270,6 +290,9 @@ function renderNav() {
   $('#count-all').textContent = live.length;
   $('#count-now').textContent = live.filter((note) => note.favorite || note.daily && note.day === todayKey() || Date.now() - new Date(note.updated) < 86400000).length;
   $('#count-favorites').textContent = live.filter((note) => note.favorite).length;
+  $('#count-unlinked').textContent = live.filter((note) => !noteIsLinked(note)).length;
+  $('#count-tasks').textContent = live.filter(noteHasOpenTasks).length;
+  $('#count-attachments').textContent = live.filter(noteHasAttachments).length;
   $('#storage-count').textContent = `${state.notes.length} ${state.notes.length === 1 ? 'note' : 'notes'}`;
 
   $('#space-list').replaceChildren(...state.spaces.map((space) => {
@@ -298,6 +321,7 @@ function renderNav() {
   }));
 
   $$('.rail-item[data-view]').forEach((button) => button.classList.toggle('active', !currentSpace && !currentTag && button.dataset.view === currentView));
+  $$('[data-smart]').forEach((button) => button.classList.toggle('active', button.dataset.smart === currentSmart));
 }
 
 function renderDays() {
@@ -321,6 +345,7 @@ function renderDays() {
 }
 
 function viewName() {
+  if (currentSmart) return { unlinked: 'Loose thoughts', tasks: 'Open tasks', attachments: 'Attachments' }[currentSmart];
   if (currentSpace) return state.spaces.find((space) => space.id === currentSpace)?.name || 'Space';
   if (currentTag) return `#${currentTag}`;
   return { now: 'Now', all: 'All notes', favorites: 'Favorites', daily: 'Daily notes', archive: 'Archive', trash: 'Recently deleted' }[currentView];
@@ -329,7 +354,7 @@ function viewName() {
 function renderList() {
   const notes = visibleNotes();
   $('#view-title').textContent = viewName();
-  $('#view-overline').textContent = currentSpace ? 'SPACE' : currentTag ? 'TAG' : currentView === 'now' ? 'TODAY' : 'LIBRARY';
+  $('#view-overline').textContent = currentSmart ? 'SMART FIELD' : currentSpace ? 'SPACE' : currentTag ? 'TAG' : currentView === 'now' ? 'TODAY' : 'LIBRARY';
   $('#note-list').className = `note-list ${layout}`;
   $('#empty-list').hidden = notes.length > 0;
   $('#note-list').replaceChildren(...notes.map((note) => {
@@ -398,16 +423,89 @@ function renderInlineTags(note) {
 function renderBacklinks(note) {
   const ownTitle = note.title.trim().toLowerCase();
   const linked = new Set(linkedTitles(note));
-  const related = state.notes.filter((candidate) => candidate.id !== note.id && !candidate.deleted && (linked.has(candidate.title.trim().toLowerCase()) || linkedTitles(candidate).includes(ownTitle)));
-  $('#backlink-list').replaceChildren(...related.map((candidate) => {
+  const ownTags = new Set(extractTags(note));
+  const related = state.notes.filter((candidate) => candidate.id !== note.id && !candidate.deleted).map((candidate) => {
+    const outgoing = linked.has(candidate.title.trim().toLowerCase());
+    const incoming = linkedTitles(candidate).includes(ownTitle);
+    const shared = extractTags(candidate).filter((tag) => ownTags.has(tag));
+    return { candidate, outgoing, incoming, shared };
+  }).filter((item) => item.outgoing || item.incoming || item.shared.length).sort((a, b) => Number(b.incoming) - Number(a.incoming) || b.shared.length - a.shared.length).slice(0, 8);
+  $('#backlink-list').replaceChildren(...related.map(({ candidate, outgoing, incoming, shared }) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'backlink';
     button.dataset.note = candidate.id;
-    button.textContent = candidate.title || 'Untitled';
+    const title = document.createElement('strong');
+    title.textContent = candidate.title || 'Untitled';
+    const reason = document.createElement('span');
+    reason.textContent = incoming ? 'Links here' : outgoing ? 'Linked from here' : `Shared #${shared[0]}`;
+    const preview = document.createElement('small');
+    preview.textContent = cleanPreview(candidate.body).slice(0, 72);
+    button.append(title, reason, preview);
     return button;
   }));
   $('#connections').classList.toggle('visible', related.length > 0);
+}
+
+function renderMap() {
+  const notes = state.notes.filter((note) => !note.deleted && !note.archived).slice(0, 36);
+  const width = 900;
+  const height = 520;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const positions = new Map(notes.map((note, index) => {
+    const selected = note.id === selectedId;
+    const angle = index * 2.399963;
+    const radius = selected ? 0 : 85 + Math.sqrt(index + 1) * 48;
+    return [note.id, { x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius }];
+  }));
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('aria-label', 'Map of connected notes');
+  const titleLookup = new Map(notes.map((note) => [note.title.trim().toLowerCase(), note]));
+  const edges = new Set();
+  notes.forEach((note) => {
+    linkedTitles(note).forEach((title) => {
+      const target = titleLookup.get(title);
+      if (target) edges.add([note.id, target.id].sort().join('|'));
+    });
+    const tags = extractTags(note);
+    notes.forEach((candidate) => {
+      if (candidate.id !== note.id && tags.some((tag) => extractTags(candidate).includes(tag))) edges.add([note.id, candidate.id].sort().join('|'));
+    });
+  });
+  edges.forEach((edge) => {
+    const [from, to] = edge.split('|');
+    const a = positions.get(from);
+    const b = positions.get(to);
+    if (!a || !b) return;
+    const line = document.createElementNS(svg.namespaceURI, 'line');
+    line.setAttribute('x1', a.x); line.setAttribute('y1', a.y); line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+    line.setAttribute('class', 'map-edge');
+    svg.append(line);
+  });
+  notes.forEach((note) => {
+    const point = positions.get(note.id);
+    const group = document.createElementNS(svg.namespaceURI, 'g');
+    group.setAttribute('class', `map-node${note.id === selectedId ? ' selected' : ''}`);
+    group.dataset.note = note.id;
+    group.setAttribute('tabindex', '0');
+    group.setAttribute('role', 'button');
+    const circle = document.createElementNS(svg.namespaceURI, 'circle');
+    circle.setAttribute('cx', point.x); circle.setAttribute('cy', point.y); circle.setAttribute('r', note.id === selectedId ? 14 : 9);
+    circle.style.setProperty('--node-color', spaceFor(note)?.color || '#ff5c35');
+    const label = document.createElementNS(svg.namespaceURI, 'text');
+    label.setAttribute('x', point.x + 16); label.setAttribute('y', point.y + 4);
+    label.textContent = (note.title || 'Untitled').slice(0, 24);
+    group.append(circle, label);
+    svg.append(group);
+  });
+  $('#map-stage').replaceChildren(svg);
+}
+
+function openMap() {
+  renderMap();
+  $('#map-dialog').showModal();
 }
 
 function updateWordCount(note) {
@@ -433,6 +531,7 @@ function createNote(options = {}) {
   currentView = note.daily ? 'daily' : 'all';
   currentSpace = null;
   currentTag = null;
+  currentSmart = null;
   selectedId = note.id;
   persist();
   render();
@@ -450,6 +549,7 @@ function openDaily(day) {
   currentView = 'daily';
   currentSpace = null;
   currentTag = null;
+  currentSmart = null;
   selectNote(note.id, true);
 }
 
@@ -541,6 +641,7 @@ function setView(view) {
   currentView = view;
   currentSpace = null;
   currentTag = null;
+  currentSmart = null;
   const notes = visibleNotes();
   if (!notes.some((note) => note.id === selectedId)) selectedId = notes[0]?.id || null;
   render();
@@ -554,19 +655,99 @@ function openCommand(query = '') {
   requestAnimationFrame(() => $('#command-input').focus());
 }
 
+function searchRecord(note) {
+  return {
+    note,
+    title: note.title || 'Untitled',
+    body: note.body || '',
+    tags: extractTags(note).join(' '),
+    space: spaceFor(note)?.name || '',
+  };
+}
+
+function getRetrievalIndex() {
+  const signature = state.notes.map((note) => `${note.id}:${note.updated}:${note.deleted}`).join('|');
+  if (retrievalIndex?.signature === signature) return retrievalIndex;
+  const records = new Map();
+  const tokens = new Map();
+  state.notes.filter((note) => !note.deleted).forEach((note) => {
+    const record = searchRecord(note);
+    records.set(note.id, record);
+    const words = `${record.title} ${record.body} ${record.tags} ${record.space}`.toLocaleLowerCase().match(/[\p{L}\p{N}_-]{2,}/gu) || [];
+    new Set(words).forEach((word) => {
+      if (!tokens.has(word)) tokens.set(word, new Set());
+      tokens.get(word).add(note.id);
+    });
+  });
+  retrievalIndex = { signature, records, tokens };
+  return retrievalIndex;
+}
+
+function searchNotes(query) {
+  const needle = query.trim().toLocaleLowerCase();
+  const queryTokens = needle.split(/\s+/).filter(Boolean);
+  const weekAgo = Date.now() - 7 * 86400000;
+  const index = getRetrievalIndex();
+  const indexedSets = queryTokens.map((token) => index.tokens.get(token)).filter(Boolean);
+  const candidates = indexedSets.length ? [...indexedSets.reduce((smallest, set) => set.size < smallest.size ? set : smallest)] : [...index.records.keys()];
+  return candidates.map((id) => index.records.get(id)).filter((record) => {
+    if (searchScope === 'recent' && new Date(record.note.updated).getTime() < weekAgo) return false;
+    if (searchScope === 'attachment' && !noteHasAttachments(record.note)) return false;
+    const haystack = searchScope === 'title' ? record.title : searchScope === 'tag' ? record.tags : `${record.title} ${record.body} ${record.tags} ${record.space}`;
+    return queryTokens.every((token) => haystack.toLocaleLowerCase().includes(token));
+  }).map((record) => {
+    const title = record.title.toLocaleLowerCase();
+    const body = record.body.toLocaleLowerCase();
+    let score = new Date(record.note.updated).getTime() / 1e13;
+    if (!needle) score += 1;
+    if (title === needle) score += 100;
+    else if (title.startsWith(needle)) score += 45;
+    else if (title.includes(needle)) score += 24;
+    if (body.includes(needle)) score += 8;
+    score += queryTokens.filter((token) => title.includes(token)).length * 9;
+    return { ...record, score };
+  }).sort((a, b) => b.score - a.score).slice(0, 30);
+}
+
+function highlightedFragment(text, query, limit = 120) {
+  const fragment = document.createDocumentFragment();
+  const needle = query.trim();
+  if (!needle) {
+    fragment.append(text.slice(0, limit));
+    return fragment;
+  }
+  const index = text.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase());
+  if (index < 0) {
+    fragment.append(text.slice(0, limit));
+    return fragment;
+  }
+  const start = Math.max(0, index - 38);
+  const end = Math.min(text.length, start + limit);
+  if (start) fragment.append('…');
+  fragment.append(text.slice(start, index));
+  const mark = document.createElement('mark');
+  mark.textContent = text.slice(index, index + needle.length);
+  fragment.append(mark, text.slice(index + needle.length, end));
+  if (end < text.length) fragment.append('…');
+  return fragment;
+}
+
 function renderCommand(query) {
   const needle = query.trim().toLowerCase();
-  const notes = state.notes.filter((note) => !note.deleted && (!needle || `${note.title} ${note.body}`.toLowerCase().includes(needle))).slice(0, 8);
+  const notes = searchNotes(query);
   commandItems = [
-    { kind: 'action', title: 'Create a new note', detail: 'Start with a blank page', icon: 'plus', action: () => createNote() },
-    { kind: 'action', title: 'Open today', detail: 'Jump to the daily note', icon: 'calendar', action: () => openDaily(todayKey()) },
-    ...notes.map((note) => ({ kind: 'note', title: note.title || 'Untitled', detail: cleanPreview(note.body), icon: 'notes', action: () => selectNote(note.id, true) })),
+    ...(!needle && searchScope === 'all' ? [
+      { kind: 'action', title: 'Create a new note', detail: 'Start with a blank page', icon: 'plus', action: () => createNote() },
+      { kind: 'action', title: 'Open today', detail: 'Jump to the daily note', icon: 'calendar', action: () => openDaily(todayKey()) },
+    ] : []),
+    ...notes.map((record) => ({ kind: 'note', title: record.title, detail: cleanPreview(record.body), space: record.space, updated: record.note.updated, icon: 'notes', action: () => selectNote(record.note.id, true) })),
   ];
+  commandIndex = Math.min(commandIndex, Math.max(0, commandItems.length - 1));
   const result = $('#command-results');
   result.replaceChildren();
   const label = document.createElement('div');
   label.className = 'command-section-label';
-  label.textContent = needle ? 'Matches' : 'Go somewhere';
+  label.textContent = needle || searchScope !== 'all' ? `${notes.length} ${notes.length === 1 ? 'match' : 'matches'}` : 'Go somewhere';
   result.append(label);
   commandItems.forEach((item, index) => {
     const button = document.createElement('button');
@@ -576,13 +757,24 @@ function renderCommand(query) {
     button.innerHTML = icon(item.icon);
     const copy = document.createElement('div');
     const title = document.createElement('strong');
-    title.textContent = item.title;
+    title.append(highlightedFragment(item.title, query, 80));
     const detail = document.createElement('span');
-    detail.textContent = item.detail;
+    detail.append(highlightedFragment(item.detail, query));
     copy.append(title, detail);
+    if (item.kind === 'note') {
+      const meta = document.createElement('small');
+      meta.textContent = `${item.space} · ${relativeTime(item.updated)}`;
+      copy.append(meta);
+    }
     button.append(copy);
     result.append(button);
   });
+  if (!commandItems.length) {
+    const empty = document.createElement('div');
+    empty.className = 'search-empty';
+    empty.innerHTML = `${icon('search')}<strong>No matching thoughts</strong><span>Try fewer words or another filter.</span>`;
+    result.append(empty);
+  }
 }
 
 function runCommand(index) {
@@ -615,6 +807,7 @@ function importNotes(file) {
       currentView = 'all';
       currentSpace = null;
       currentTag = null;
+      currentSmart = null;
       persist();
       render();
       toast('Notebook restored');
@@ -669,6 +862,7 @@ $('#space-list').addEventListener('click', (event) => {
   if (!button) return;
   currentSpace = button.dataset.space;
   currentTag = null;
+  currentSmart = null;
   currentView = 'all';
   selectedId = visibleNotes()[0]?.id || null;
   render();
@@ -678,6 +872,17 @@ $('#tag-list').addEventListener('click', (event) => {
   if (!button) return;
   currentTag = button.dataset.tag;
   currentSpace = null;
+  currentSmart = null;
+  currentView = 'all';
+  selectedId = visibleNotes()[0]?.id || null;
+  render();
+});
+$('#smart-list').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-smart]');
+  if (!button) return;
+  currentSmart = button.dataset.smart;
+  currentSpace = null;
+  currentTag = null;
   currentView = 'all';
   selectedId = visibleNotes()[0]?.id || null;
   render();
@@ -814,6 +1019,7 @@ $('#add-space').addEventListener('click', () => {
   state.spaces.push(space);
   currentSpace = space.id;
   currentTag = null;
+  currentSmart = null;
   persist();
   render();
 });
@@ -845,6 +1051,30 @@ $('#command-input').addEventListener('keydown', (event) => {
 $('#command-results').addEventListener('click', (event) => {
   const button = event.target.closest('[data-command-index]');
   if (button) runCommand(Number(button.dataset.commandIndex));
+});
+$('#search-filters').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-search-scope]');
+  if (!button) return;
+  searchScope = button.dataset.searchScope;
+  commandIndex = 0;
+  $$('[data-search-scope]').forEach((item) => item.classList.toggle('active', item === button));
+  renderCommand($('#command-input').value);
+});
+$('#map-button').addEventListener('click', openMap);
+$('#map-close').addEventListener('click', () => $('#map-dialog').close());
+$('#map-stage').addEventListener('click', (event) => {
+  const node = event.target.closest('[data-note]');
+  if (!node) return;
+  $('#map-dialog').close();
+  selectNote(node.dataset.note, false);
+});
+$('#map-stage').addEventListener('keydown', (event) => {
+  if (!['Enter', ' '].includes(event.key)) return;
+  const node = event.target.closest('[data-note]');
+  if (!node) return;
+  event.preventDefault();
+  $('#map-dialog').close();
+  selectNote(node.dataset.note, false);
 });
 $('#editor').addEventListener('click', (event) => {
   if (window.innerWidth <= 620 && event.clientY < 122 && event.clientX < 120) $('#editor').classList.remove('mobile-open');

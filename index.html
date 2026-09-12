@@ -14,7 +14,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%237aa7ff' d='M32 3 58 18v28L32 61 6 46V18z'/%3E%3Cpath fill='%23fff' fill-opacity='.9' d='m32 10 18 10-18 10-18-10zm0 25 18-10v17L32 52z'/%3E%3C/svg%3E" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./jotfield-icon.svg" />
-    <link rel="stylesheet" href="./styles.css?v=writing1" />
+    <link rel="stylesheet" href="./styles.css?v=retrieval1" />
   </head>
   <body>
     <canvas id="light-field" aria-hidden="true"></canvas>
@@ -51,6 +51,9 @@
       <symbol id="i-attach" viewBox="0 0 24 24"><path d="m8 12 6-6a4 4 0 0 1 6 6l-8 8a6 6 0 0 1-8-8l8-8"/></symbol>
       <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M5 12h8a6 6 0 0 1 6 6"/></symbol>
       <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 7 5 5-5 5M19 12h-8a6 6 0 0 0-6 6"/></symbol>
+      <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+      <symbol id="i-map" viewBox="0 0 24 24"><circle cx="6" cy="7" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="m8 7 8-1M7 9l4 7M17 8l-4 8"/></symbol>
+      <symbol id="i-field" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM9 4v16M9 9h10"/></symbol>
     </svg>
 
     <div class="app-frame">
@@ -100,6 +103,15 @@
             <div id="tag-list" class="tag-list"></div>
           </div>
 
+          <div class="rail-section smart-section">
+            <div class="section-label"><span>Smart fields</span></div>
+            <div id="smart-list">
+              <button class="space-item" type="button" data-smart="unlinked"><svg><use href="#i-field"/></svg><span>Loose thoughts</span><b id="count-unlinked">0</b></button>
+              <button class="space-item" type="button" data-smart="tasks"><svg><use href="#i-check"/></svg><span>Open tasks</span><b id="count-tasks">0</b></button>
+              <button class="space-item" type="button" data-smart="attachments"><svg><use href="#i-attach"/></svg><span>Attachments</span><b id="count-attachments">0</b></button>
+            </div>
+          </div>
+
           <div class="rail-bottom">
             <button class="rail-item" data-view="archive" type="button"><svg><use href="#i-archive"/></svg><span>Archive</span></button>
             <button class="rail-item" data-view="trash" type="button"><svg><use href="#i-trash"/></svg><span>Recently deleted</span></button>
@@ -134,7 +146,8 @@
           <article id="editor-document" hidden>
             <div class="editor-toolbar">
               <div class="editor-path" id="editor-path"></div>
-              <div class="editor-actions">
+            <div class="editor-actions">
+                <button id="map-button" type="button" aria-label="Open note map"><svg><use href="#i-map"/></svg></button>
                 <button id="favorite-button" type="button" aria-label="Favorite note"><svg><use href="#i-star"/></svg></button>
                 <button id="focus-button" type="button" aria-label="Focus on note"><svg><use href="#i-focus"/></svg></button>
                 <button id="more-button" type="button" aria-label="Note actions"><svg><use href="#i-more"/></svg></button>
@@ -177,10 +190,23 @@
 
     <dialog class="command-dialog" id="command-dialog">
       <form method="dialog" class="command-shell">
-        <div class="command-input-wrap"><svg><use href="#i-search"/></svg><input id="command-input" autocomplete="off" placeholder="Find a note or run a command" /><kbd>esc</kbd></div>
+        <div class="command-input-wrap"><svg><use href="#i-search"/></svg><input id="command-input" autocomplete="off" placeholder="Search titles, text, tags, and spaces" /><kbd>esc</kbd></div>
+        <div class="search-filters" id="search-filters" role="toolbar" aria-label="Search filters">
+          <button type="button" class="active" data-search-scope="all">Everywhere</button>
+          <button type="button" data-search-scope="title">Titles</button>
+          <button type="button" data-search-scope="tag">Tags</button>
+          <button type="button" data-search-scope="recent">Recent</button>
+          <button type="button" data-search-scope="attachment">Files</button>
+        </div>
         <div class="command-results" id="command-results"></div>
         <div class="command-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span><span><kbd>⌘ N</kbd> new note</span></div>
       </form>
+    </dialog>
+
+    <dialog class="map-dialog" id="map-dialog">
+      <div class="map-head"><div><span>NOTE CONSTELLATION</span><h2>Connections</h2></div><button id="map-close" type="button" aria-label="Close note map"><svg><use href="#i-close"/></svg></button></div>
+      <div class="map-stage" id="map-stage"></div>
+      <p class="map-foot">Select a thought to open it. Lines show explicit links and shared tags.</p>
     </dialog>
 
     <dialog class="action-dialog" id="action-dialog">
@@ -213,6 +239,6 @@
       <button type="button" data-slash="code"><b>&lt;/&gt;</b><span><strong>Code</strong><small>Preserve spacing and syntax</small></span></button>
     </div>
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
-    <script type="module" src="./app.js?v=writing1"></script>
+    <script type="module" src="./app.js?v=retrieval1"></script>
   </body>
 </html>
