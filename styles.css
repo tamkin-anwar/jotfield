@@ -307,6 +307,45 @@ dialog::backdrop { background: rgba(2, 4, 9, 0.64); backdrop-filter: blur(8px); 
 .action-dialog button:hover { background: rgba(255, 255, 255, 0.05); }
 .action-dialog button.danger { color: var(--danger); }
 .action-dialog svg { width: 15px; height: 15px; }
+.share-dialog { width: min(520px, calc(100vw - 28px)); padding: 0; border: 1px solid rgba(54,45,34,.15); border-radius: 22px; background: rgba(251,247,238,.98); color: var(--ink); box-shadow: 0 32px 110px rgba(62,42,20,.28); backdrop-filter: blur(34px); }
+.share-dialog[open], .shared-note-dialog[open] { animation: reveal 180ms var(--ease); }
+.share-head { height: 82px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; border-bottom: 1px solid var(--line); }
+.share-head span { color: var(--accent); font-size: 9px; font-weight: 750; letter-spacing: .16em; }
+.share-head h2 { margin: 4px 0 0; font: 24px/1.1 Georgia, serif; }
+.share-head button { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; }
+.share-head button:hover { background: rgba(232,219,199,.48); color: var(--ink); }
+.share-head svg { width: 17px; height: 17px; }
+.share-preview { margin: 22px 22px 15px; padding: 18px; border: 1px solid var(--line); border-radius: 15px; background: rgba(255,255,255,.32); }
+.share-preview > span { color: var(--accent); font-size: 9px; font-weight: 750; letter-spacing: .14em; }
+.share-preview strong { display: block; margin-top: 7px; font: 21px/1.25 Georgia, serif; }
+.share-preview p { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.share-privacy { margin: 0 22px 18px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.share-actions { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; padding: 0 22px; }
+.share-actions button { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.35); color: var(--ink); font-size: 11px; font-weight: 650; cursor: pointer; }
+.share-actions button:hover { border-color: var(--line-bright); background: rgba(255,255,255,.68); }
+.share-actions .share-primary { border-color: transparent; background: var(--accent); color: white; }
+.share-actions .share-primary:hover { background: #eb4e2a; }
+.share-actions svg { width: 15px; height: 15px; }
+.share-foot { margin: 15px 22px 21px; color: #978d80; font-size: 10px; text-align: center; }
+.shared-note-dialog { width: 100vw; max-width: none; height: 100vh; max-height: none; margin: 0; padding: 0; border: 0; background: #f6f0e6; color: #302a24; }
+.shared-sheet { min-height: 100%; display: grid; grid-template-rows: 72px 1fr 58px; }
+.shared-sheet header, .shared-sheet footer { display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(22px,5vw,72px); border-color: rgba(55,44,34,.11); }
+.shared-sheet header { border-bottom: 1px solid rgba(55,44,34,.11); }
+.shared-sheet footer { border-top: 1px solid rgba(55,44,34,.11); color: #8b8075; font-size: 10px; }
+.shared-brand { display: flex; align-items: center; gap: 10px; }
+.shared-brand i { width: 12px; height: 12px; border-radius: 4px; background: linear-gradient(135deg,#ff5c35 0 34%,#c9f06a 34% 67%,#315cf5 67%); box-shadow: 0 0 18px rgba(255,92,53,.22); }
+.shared-brand span { font: 17px Georgia, serif; }
+.shared-brand b { padding-left: 10px; border-left: 1px solid rgba(55,44,34,.15); color: #8b8075; font-size: 10px; font-weight: 600; }
+.shared-sheet header button, .shared-sheet footer button { min-height: 34px; padding: 0 13px; border: 1px solid rgba(55,44,34,.14); border-radius: 9px; background: rgba(255,255,255,.38); color: #53493f; font-size: 10px; font-weight: 650; cursor: pointer; }
+.shared-sheet footer button { display: flex; align-items: center; gap: 6px; }
+.shared-sheet footer svg { width: 14px; height: 14px; }
+.shared-note-paper { width: min(760px, calc(100vw - 44px)); margin: 0 auto; padding: clamp(60px,10vh,110px) 0 90px; }
+.shared-note-paper > span { color: #b54c34; font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.shared-note-paper h1 { margin: 22px 0 36px; font: clamp(38px,6vw,70px)/1.03 Georgia, serif; letter-spacing: -.035em; }
+.shared-note-paper #shared-note-body { color: #51483f; font: 18px/1.72 Georgia, serif; }
+.shared-note-paper #shared-note-body h2 { margin-top: 1.8em; font-size: 1.5em; }
+.shared-note-paper #shared-note-body img { max-width: 100%; border-radius: 13px; }
+.shared-note-paper #shared-note-body pre { overflow-x: auto; padding: 16px; border-radius: 10px; background: rgba(55,44,34,.07); font: 13px/1.55 ui-monospace, monospace; }
 .toast-region { position: fixed; z-index: 50; right: 25px; bottom: 24px; display: grid; gap: 8px; pointer-events: none; }
 .control-tooltip { position: fixed; z-index: 120; max-width: 230px; padding: 7px 10px; border: 1px solid var(--line-bright); border-radius: 8px; background: rgba(45,38,32,.96); color: #fffaf2; box-shadow: 0 9px 28px rgba(44,30,18,.2); font-size: 11px; font-weight: 600; line-height: 1.35; letter-spacing: .01em; pointer-events: auto; opacity: 0; transform: translateY(-3px) scale(.98); transition: opacity 120ms var(--ease), transform 120ms var(--ease); }
 .control-tooltip.visible { opacity: 1; transform: none; }
@@ -392,6 +431,7 @@ dialog::backdrop { background: rgba(2, 4, 9, 0.64); backdrop-filter: blur(8px); 
   --cyan: #168c8b;
   --green: #497a45;
   --amber: #ff5c35;
+  --accent: #ff5c35;
   --danger: #c43838;
 }
 
@@ -527,6 +567,7 @@ html[data-theme="dark"] {
   --line-bright: rgba(255,245,230,.16);
   --panel: rgba(27,24,21,.84);
   --panel-solid: #1b1815;
+  --accent: #ff6a46;
 }
 html[data-theme="dark"] body { background: #14110f; }
 html[data-theme="dark"] #light-field { filter: saturate(104%) contrast(108%); }
@@ -582,12 +623,22 @@ html[data-theme="dark"] .command-result { color: #b1a69b; }
 html[data-theme="dark"] .command-result.selected, html[data-theme="dark"] .command-result:hover { color: #fff5e9; background: rgba(255,245,230,.055); }
 html[data-theme="dark"] .action-dialog button { color: #b6aba0; }
 html[data-theme="dark"] .action-dialog button:hover { background: rgba(255,245,230,.05); }
+html[data-theme="dark"] .share-dialog { border-color: var(--line-bright); background: rgba(31,27,23,.98); box-shadow: 0 32px 110px rgba(0,0,0,.58); }
+html[data-theme="dark"] .share-preview { background: rgba(255,245,230,.025); }
+html[data-theme="dark"] .share-actions button { background: rgba(255,245,230,.035); }
+html[data-theme="dark"] .share-actions .share-primary { background: var(--accent); }
 html[data-theme="dark"] .settings-head button, html[data-theme="dark"] .appearance-picker button { background: rgba(255,245,230,.035); }
 html[data-theme="dark"] .appearance-picker button.active { box-shadow: 0 0 0 1px #ff6a46, 0 8px 20px rgba(0,0,0,.18); }
 
 @media (max-width: 620px) {
   .appearance-picker { grid-template-columns: 1fr; }
   .theme-preview { height: 46px; }
+}
+@media (max-width: 520px) {
+  .share-actions { grid-template-columns: 1fr 1fr; }
+  .share-actions .share-primary { grid-column: 1 / -1; }
+  .shared-brand b { display: none; }
+  .shared-note-paper { padding-top: 54px; }
 }
 
 /* Retrieval system */

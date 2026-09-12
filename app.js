@@ -81,6 +81,8 @@ let retrievalIndex = null;
 let planView = 'agenda';
 let planMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let installEvent = null;
+let lastShareUrl = '';
+let openedSharedNote = null;
 const deviceChannel = 'BroadcastChannel' in window ? new BroadcastChannel('jotfield-device-sync') : null;
 let databasePromise;
 
@@ -249,6 +251,134 @@ async function openVault(file, passphrase) {
   const payload = JSON.parse(new TextDecoder().decode(plaintext));
   if (payload.product !== 'Jotfield' || !payload.state?.notes) throw new Error('Invalid notebook');
   return payload.state;
+}
+
+function bytesToBase64Url(bytes) {
+  return bytesToBase64(bytes).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/g, '');
+}
+
+function base64UrlToBytes(value) {
+  const base64 = value.replaceAll('-', '+').replaceAll('_', '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  return base64ToBytes(base64);
+}
+
+async function compressSharePayload(bytes) {
+  if (!('CompressionStream' in window)) return { bytes, compressed: false };
+  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'));
+  return { bytes: new Uint8Array(await new Response(stream).arrayBuffer()), compressed: true };
+}
+
+async function expandSharePayload(bytes, compressed) {
+  if (!compressed) return bytes;
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+function shareableBody(html) {
+  const documentBody = new DOMParser().parseFromString(html, 'text/html').body;
+  documentBody.querySelectorAll('img[src^="data:"]').forEach((image) => {
+    const replacement = document.createElement('p');
+    replacement.textContent = `[Image omitted: ${image.alt || 'attachment'}]`;
+    image.replaceWith(replacement);
+  });
+  return documentBody.innerHTML;
+}
+
+function safeSharedBody(html) {
+  const documentBody = new DOMParser().parseFromString(html, 'text/html').body;
+  documentBody.querySelectorAll('script,style,iframe,object,embed,form,video,audio').forEach((element) => element.remove());
+  documentBody.querySelectorAll('*').forEach((element) => {
+    [...element.attributes].forEach((attribute) => {
+      if (!['href', 'src', 'alt', 'data-checked'].includes(attribute.name)) element.removeAttribute(attribute.name);
+    });
+    const href = element.getAttribute('href');
+    if (href && !/^(https?:|mailto:)/i.test(href)) element.removeAttribute('href');
+    if (href) { element.setAttribute('target', '_blank'); element.setAttribute('rel', 'noopener noreferrer'); }
+    const src = element.getAttribute('src');
+    if (src && !/^(https?:|data:image\/)/i.test(src)) element.removeAttribute('src');
+  });
+  documentBody.querySelectorAll('button').forEach((button) => {
+    const marker = document.createElement('span');
+    marker.textContent = button.closest('[data-checked="true"]') ? '☑ ' : '□ ';
+    button.replaceWith(marker);
+  });
+  return documentBody.innerHTML;
+}
+
+async function makePrivateNoteUrl(note) {
+  const space = state.spaces.find((item) => item.id === note.space)?.name || 'Note';
+  const payload = new TextEncoder().encode(JSON.stringify({ product: 'Jotfield Shared Note', version: 1, title: note.title || 'Untitled', body: shareableBody(note.body), created: note.created, updated: note.updated, space }));
+  const packed = await compressSharePayload(payload);
+  const rawKey = crypto.getRandomValues(new Uint8Array(32));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt']);
+  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, packed.bytes));
+  const fragment = [bytesToBase64Url(iv), bytesToBase64Url(cipher), bytesToBase64Url(rawKey), packed.compressed ? '1' : '0'].join('.');
+  const url = `${location.origin}${location.pathname}#note=${fragment}`;
+  if (url.length > 64000) throw new Error('Note too large');
+  return url;
+}
+
+async function readPrivateNoteUrl() {
+  if (!location.hash.startsWith('#note=')) return null;
+  const parts = location.hash.slice(6).split('.');
+  if (parts.length !== 4) throw new Error('Invalid shared note');
+  const [ivValue, cipherValue, keyValue, compressed] = parts;
+  const key = await crypto.subtle.importKey('raw', base64UrlToBytes(keyValue), { name: 'AES-GCM' }, false, ['decrypt']);
+  const plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64UrlToBytes(ivValue) }, key, base64UrlToBytes(cipherValue)));
+  const expanded = await expandSharePayload(plain, compressed === '1');
+  const note = JSON.parse(new TextDecoder().decode(expanded));
+  if (note.product !== 'Jotfield Shared Note' || note.version !== 1) throw new Error('Invalid shared note');
+  return note;
+}
+
+function noteText(note) {
+  const body = new DOMParser().parseFromString(note.body || '', 'text/html').body.textContent?.trim() || '';
+  return `${note.title || 'Untitled'}\n\n${body}`;
+}
+
+async function copyText(value) {
+  if (navigator.clipboard?.writeText) {
+    try { await navigator.clipboard.writeText(value); return; }
+    catch {}
+  }
+  const area = document.createElement('textarea');
+  area.value = value; area.style.position = 'fixed'; area.style.opacity = '0';
+  document.body.append(area); area.select();
+  const copied = document.execCommand('copy');
+  area.remove();
+  if (!copied) throw new Error('Copy unavailable');
+}
+
+async function openShareDialog() {
+  const note = currentNote();
+  if (!note) return;
+  $('#share-title').textContent = note.title || 'Untitled';
+  $('#share-space').textContent = state.spaces.find((space) => space.id === note.space)?.name || 'Note';
+  $('#share-summary').textContent = cleanPreview(note.body).slice(0, 150) || 'Empty note';
+  $('#share-status').textContent = 'Preparing an encrypted copy...';
+  $('#share-dialog').showModal();
+  try {
+    lastShareUrl = await makePrivateNoteUrl(note);
+    $('#share-status').textContent = 'Changes made later will not alter the shared copy.';
+  } catch {
+    lastShareUrl = '';
+    $('#share-status').textContent = 'This note is too large for a link. Download the Markdown copy instead.';
+  }
+}
+
+async function showSharedNote() {
+  try {
+    const note = await readPrivateNoteUrl();
+    if (!note) return;
+    openedSharedNote = note;
+    $('#shared-note-date').textContent = new Date(note.updated || note.created).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    $('#shared-note-title').textContent = note.title || 'Untitled';
+    $('#shared-note-body').innerHTML = safeSharedBody(note.body || '');
+    $('#shared-note-dialog').showModal();
+  } catch {
+    toast('This private note link is not valid');
+  }
 }
 
 function currentNote() {
@@ -1263,6 +1393,47 @@ $('#favorite-button').addEventListener('click', () => {
   persist();
   render();
 });
+$('#share-button').addEventListener('click', openShareDialog);
+$('#share-close').addEventListener('click', () => $('#share-dialog').close());
+$('#copy-share').addEventListener('click', async () => {
+  if (!lastShareUrl) return;
+  try { await copyText(lastShareUrl); toast('Private link copied'); }
+  catch { toast('Could not copy the link'); }
+});
+$('#native-share').addEventListener('click', async () => {
+  if (!lastShareUrl) return;
+  const note = currentNote();
+  const data = { title: note?.title || 'Jotfield note', text: 'A private read-only note from Jotfield', url: lastShareUrl };
+  try {
+    if (navigator.share && (!navigator.canShare || navigator.canShare(data))) await navigator.share(data);
+    else { await copyText(lastShareUrl); toast('Private link copied'); }
+  } catch (error) {
+    if (error.name !== 'AbortError') toast('Could not open sharing');
+  }
+});
+$('#download-markdown').addEventListener('click', () => {
+  const note = currentNote();
+  if (!note) return;
+  const blob = new Blob([noteText(note)], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${(note.title || 'untitled').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'note'}.md`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+  toast('Markdown downloaded');
+});
+$('#shared-note-close').addEventListener('click', () => {
+  $('#shared-note-dialog').close();
+  history.replaceState(null, '', `${location.pathname}${location.search}`);
+  openedSharedNote = null;
+});
+$('#shared-note-copy').addEventListener('click', async () => {
+  if (!openedSharedNote) return;
+  try { await copyText(noteText(openedSharedNote)); toast('Note text copied'); }
+  catch { toast('Could not copy the note'); }
+});
+window.addEventListener('hashchange', showSharedNote);
 $('#focus-button').addEventListener('click', () => {
   $('#editor').classList.toggle('focused');
   $('#focus-button').classList.toggle('active');
@@ -1527,6 +1698,7 @@ function startLightField() {
 startLightField();
 render();
 hydrateDurableState();
+showSharedNote();
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
