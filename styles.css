@@ -230,7 +230,28 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
 .empty-prism i { position: absolute; inset: 5px; border: 1px solid rgba(125, 169, 255, 0.32); border-radius: 8px; box-shadow: 0 0 25px rgba(93, 141, 240, 0.08); }
 .empty-prism i:nth-child(2) { transform: rotate(60deg); border-color: rgba(179, 146, 246, 0.28); }
 .empty-prism i:nth-child(3) { transform: rotate(120deg); border-color: rgba(102, 220, 235, 0.26); }
-#editor-document { height: 100%; }
+#editor-document { height: 100%; view-transition-name: note-editor; }
+
+::view-transition-group(note-editor) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(.2, .78, .2, 1);
+}
+
+::view-transition-old(note-editor) {
+  animation: note-leave 180ms ease both;
+}
+
+::view-transition-new(note-editor) {
+  animation: note-arrive 300ms cubic-bezier(.2, .78, .2, 1) both;
+}
+
+@keyframes note-leave {
+  to { opacity: 0; transform: translateY(-3px) scale(.997); filter: blur(1px); }
+}
+
+@keyframes note-arrive {
+  from { opacity: 0; transform: translateY(7px) scale(.995); filter: blur(2px); }
+}
 .editor-toolbar { height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 25px 0 31px; border-bottom: 1px solid var(--line); }
 .editor-path { display: flex; align-items: center; gap: 8px; color: #6e7b90; font-size: 11px; }
 .editor-path span:last-child { color: #9aa9be; }

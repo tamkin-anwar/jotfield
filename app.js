@@ -1,3 +1,7 @@
+import { createCloudClient, cloudConfiguration } from './src/cloud/client.js';
+import { makeSyncEnvelope } from './src/cloud/contracts.js';
+import { transitionView } from './src/motion.js';
+
 const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
 const THEME_KEY = 'jotfield-appearance';
@@ -85,6 +89,10 @@ let lastShareUrl = '';
 let openedSharedNote = null;
 const deviceChannel = 'BroadcastChannel' in window ? new BroadcastChannel('jotfield-device-sync') : null;
 let databasePromise;
+const cloudClientPromise = createCloudClient();
+const cloudReady = cloudConfiguration.enabled;
+document.documentElement.dataset.cloud = cloudReady ? 'ready' : 'local';
+cloudClientPromise.catch(() => { document.documentElement.dataset.cloud = 'unavailable'; });
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 let themeChoice = localStorage.getItem(THEME_KEY) || 'system';
@@ -186,7 +194,7 @@ function persist() {
     const revision = note ? { id: `${Date.now()}-${note.id}`, noteId: note.id, created: now(), note: structuredClone(note) } : null;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
     writeDurably(snapshot, revision).catch(() => {});
-    deviceChannel?.postMessage({ type: 'notebook', snapshot });
+    deviceChannel?.postMessage(makeSyncEnvelope('notebook.changed', snapshot));
     $('#save-state').classList.remove('saving');
     $('#save-state').lastChild.textContent = ' Saved locally';
   }, 220);
@@ -210,8 +218,8 @@ function mergeNotebook(local, incoming) {
 }
 
 deviceChannel?.addEventListener('message', (event) => {
-  if (event.data?.type !== 'notebook' || !event.data.snapshot?.notes) return;
-  state = mergeNotebook(state, event.data.snapshot);
+  if (event.data?.kind !== 'notebook.changed' || !event.data.payload?.notes) return;
+  state = mergeNotebook(state, event.data.payload);
   selectedId = state.notes.some((note) => note.id === selectedId) ? selectedId : state.notes[0]?.id || null;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
   writeDurably(structuredClone(state)).catch(() => {});
@@ -956,10 +964,13 @@ function updateWordCount(note) {
 }
 
 function selectNote(id, focus = false) {
-  selectedId = id;
-  render();
-  $('#editor').classList.add('mobile-open');
-  if (focus) requestAnimationFrame(() => ($('#title-input').value ? $('#body-input') : $('#title-input')).focus());
+  transitionView('note-open', () => {
+    selectedId = id;
+    render();
+    $('#editor').classList.add('mobile-open');
+  }).then(() => {
+    if (focus) requestAnimationFrame(() => ($('#title-input').value ? $('#body-input') : $('#title-input')).focus());
+  });
 }
 
 function createNote(options = {}) {

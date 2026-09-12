@@ -55,13 +55,14 @@ Jotfield combines the interaction patterns people return to across established n
 - Obsidian inspired explicit links and backlinks between notes.
 - Fantastical inspired context-first navigation, polished keyboard control, and an interface that feels like one instrument.
 
-Jotfield keeps these ideas inside a focused personal notebook. It does not require AI, a subscription, or a cloud account. Encrypted vault files provide private device transfer without sending the passphrase or readable notes to a server. Private note links place an encrypted, read-only copy in the URL fragment, which browsers do not send to the host.
+Jotfield keeps these ideas inside a focused notebook. Local use does not require AI, a subscription, or a cloud account. Encrypted vault files provide private device transfer without sending the passphrase or readable notes to a server. Private note links place an encrypted, read-only copy in the URL fragment, which browsers do not send to the host.
 
 ## Running locally
 
-You need Python 3, which is included with the standard developer tools on macOS.
+Install the project packages once, then start the development server.
 
 ```bash
+npm install
 npm run dev
 ```
 
@@ -69,8 +70,16 @@ Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
 Your notes stay in the browser storage for that address. Use the export button in the top bar to create a portable backup.
 
+## Production foundation
+
+The production build uses Vite and creates a deployable `dist` directory. GitHub Actions checks and publishes that bundle after changes reach `main`.
+
+An optional Supabase client boundary is ready for the account batch. Without cloud configuration, Jotfield remains entirely local. The first database migration defines encrypted note records, workspace membership, trusted devices, wrapped keys, synchronization operations, and Row Level Security policies. It does not store readable note content.
+
+See [the production architecture](docs/architecture.md) for the security and synchronization boundaries.
+
 ## Technical shape
 
-Jotfield uses semantic HTML, modern CSS, native JavaScript, WebGL, IndexedDB, a service worker, and a reusable SVG icon system. There are no runtime packages and no build step.
+Jotfield uses semantic HTML, modern CSS, JavaScript modules, WebGL, IndexedDB, Supabase, a service worker, and a reusable SVG icon system.
 
 Built by Anwar Creative Studio.
