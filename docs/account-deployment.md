@@ -36,6 +36,8 @@ Both values are designed to be visible to browsers. Authorization comes from Row
 - A trusted device keeps its non-extractable sync key in IndexedDB. New devices require the same sync passphrase.
 - Jotfield merges notes by their update time before upload and uses the cloud content version to reject stale writes.
 - Authenticated Realtime subscriptions deliver encrypted notebook changes to other devices. Offline edits retry automatically after the connection returns.
+- Signed-in members can create live links for individual notes. The server stores ciphertext and link controls, while the decryption key stays in the URL fragment.
+- Live links expire within 30 days and can be updated or revoked by their owner.
 - Browser notes remain local after sign-out or cloud account deletion.
 
 Passkeys require a dedicated WebAuthn server ceremony and recovery design. They should be added after the encrypted device-key batch so authentication and encryption recovery remain separate.

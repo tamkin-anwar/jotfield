@@ -2,6 +2,7 @@ import { createCloudClient, cloudConfiguration } from './src/cloud/client.js';
 import { accountLabel, createAccount, deleteCloudAccount, observeAccount, sendMagicLink, sendPasswordReset, signInWithPassword, signOut, updatePassword } from './src/cloud/auth.js';
 import { makeSyncEnvelope } from './src/cloud/contracts.js';
 import { createEncryptedSync } from './src/cloud/sync.js';
+import { createLiveShare, liveShareUrl, readLiveShare, readLiveShareFragment, revokeLiveShare, updateLiveShare } from './src/cloud/shares.js';
 import { transitionView } from './src/motion.js';
 
 const STORAGE_KEY = 'jotfield-notes-v1';
@@ -393,9 +394,21 @@ function safeSharedBody(html) {
   return documentBody.innerHTML;
 }
 
-async function makePrivateNoteUrl(note) {
+function sharedNotePayload(note) {
   const space = state.spaces.find((item) => item.id === note.space)?.name || 'Note';
-  const payload = new TextEncoder().encode(JSON.stringify({ product: 'Jotfield Shared Note', version: 1, title: note.title || 'Untitled', body: shareableBody(note.html || plainTextToHTML(note.body)), created: note.created, updated: note.updated, space }));
+  return {
+    product: 'Jotfield Shared Note',
+    version: 1,
+    title: note.title || 'Untitled',
+    body: shareableBody(note.html || plainTextToHTML(note.body)),
+    created: note.created,
+    updated: note.updated,
+    space,
+  };
+}
+
+async function makePrivateNoteUrl(note) {
+  const payload = new TextEncoder().encode(JSON.stringify(sharedNotePayload(note)));
   const packed = await compressSharePayload(payload);
   const rawKey = crypto.getRandomValues(new Uint8Array(32));
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -581,28 +594,102 @@ async function openShareDialog() {
   $('#share-title').textContent = note.title || 'Untitled';
   $('#share-space').textContent = state.spaces.find((space) => space.id === note.space)?.name || 'Note';
   $('#share-summary').textContent = cleanPreview(note.body).slice(0, 150) || 'Empty note';
+  const livePanel = $('#live-share-panel');
+  livePanel.hidden = !cloudReady || !accountSession;
+  if (!livePanel.hidden) renderLiveShare(note);
   $('#share-status').textContent = 'Preparing an encrypted copy...';
   $('#share-dialog').showModal();
   try {
-    lastShareUrl = await makePrivateNoteUrl(note);
-    $('#share-status').textContent = 'Changes made later will not alter the shared copy.';
+    lastShareUrl = note.liveShare
+      ? liveShareUrl(note.liveShare.id, note.liveShare.key)
+      : await makePrivateNoteUrl(note);
+    $('#share-status').textContent = note.liveShare
+      ? 'This link shows the last update you shared.'
+      : 'Changes made later will not alter the shared copy.';
   } catch {
     lastShareUrl = '';
     $('#share-status').textContent = 'This note is too large for a link. Download the Markdown copy instead.';
   }
 }
 
+function liveShareExpiry(days = Number($('#live-share-expiry').value || 7)) {
+  return new Date(Date.now() + days * 86400000).toISOString();
+}
+
+function renderLiveShare(note = currentNote()) {
+  const share = note?.liveShare;
+  $('#live-share-create').textContent = share ? 'Update live link' : 'Create live link';
+  $('#native-share-label').textContent = share ? 'Share live link' : 'Share private link';
+  $('#copy-share-label').textContent = share ? 'Copy live link' : 'Copy link';
+  $('#live-share-revoke').hidden = !share;
+  $('#live-share-status').textContent = share
+    ? `Available until ${new Date(share.expiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+    : 'The link can be updated or turned off later.';
+}
+
+async function saveLiveShare() {
+  const note = currentNote();
+  if (!note || !accountSession) return;
+  const updating = Boolean(note.liveShare);
+  const button = $('#live-share-create');
+  button.disabled = true;
+  $('#live-share-status').textContent = updating ? 'Updating encrypted link...' : 'Creating encrypted link...';
+  try {
+    const expiresAt = liveShareExpiry();
+    note.liveShare = updating
+      ? await updateLiveShare(cloudClientPromise, note.liveShare, sharedNotePayload(note), expiresAt)
+      : await createLiveShare(cloudClientPromise, sharedNotePayload(note), expiresAt);
+    note.updated = now();
+    persist();
+    lastShareUrl = liveShareUrl(note.liveShare.id, note.liveShare.key);
+    $('#share-status').textContent = 'This link shows the last update you shared.';
+    await copyText(lastShareUrl);
+    renderLiveShare(note);
+    toast(updating ? 'Live private link updated and copied' : 'Live private link created and copied');
+  } catch (error) {
+    $('#live-share-status').textContent = error.message || 'Live sharing needs attention.';
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function stopLiveShare() {
+  const note = currentNote();
+  if (!note?.liveShare) return;
+  const button = $('#live-share-revoke');
+  button.disabled = true;
+  $('#live-share-status').textContent = 'Turning off link...';
+  try {
+    await revokeLiveShare(cloudClientPromise, note.liveShare.id);
+    delete note.liveShare;
+    note.updated = now();
+    persist();
+    lastShareUrl = await makePrivateNoteUrl(note);
+    renderLiveShare(note);
+    $('#share-status').textContent = 'Changes made later will not alter the shared copy.';
+    toast('Live link turned off');
+  } catch (error) {
+    $('#live-share-status').textContent = error.message || 'Could not turn off the link.';
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function showSharedNote() {
   try {
-    const note = await readPrivateNoteUrl();
+    const live = readLiveShareFragment();
+    const note = live
+      ? await readLiveShare(cloudClientPromise, live.id, live.key)
+      : await readPrivateNoteUrl();
     if (!note) return;
     openedSharedNote = note;
     $('#shared-note-date').textContent = new Date(note.updated || note.created).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     $('#shared-note-title').textContent = note.title || 'Untitled';
     $('#shared-note-body').innerHTML = safeSharedBody(note.body || '');
+    $('#shared-note-kind').textContent = live ? 'Live private note' : 'Private read-only copy';
     $('#shared-note-dialog').showModal();
-  } catch {
-    toast('This private note link is not valid');
+  } catch (error) {
+    toast(error.message === 'This private link has expired or was turned off' ? error.message : 'This private note link is not valid');
   }
 }
 
@@ -1782,6 +1869,8 @@ $('#favorite-button').addEventListener('click', () => {
 });
 $('#share-button').addEventListener('click', openShareDialog);
 $('#share-close').addEventListener('click', () => $('#share-dialog').close());
+$('#live-share-create').addEventListener('click', saveLiveShare);
+$('#live-share-revoke').addEventListener('click', stopLiveShare);
 $('#copy-share').addEventListener('click', async () => {
   if (!lastShareUrl) return;
   try { await copyText(lastShareUrl); toast('Private link copied'); }

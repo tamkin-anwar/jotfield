@@ -242,7 +242,13 @@
       <div class="share-head"><div><span>PRIVATE LINK</span><h2>Share this note</h2></div><button id="share-close" type="button" aria-label="Close sharing"><svg><use href="#i-close"/></svg></button></div>
       <div class="share-preview"><span id="share-space">NOTE</span><strong id="share-title">Untitled</strong><p id="share-summary"></p></div>
       <p class="share-privacy">The note is encrypted inside the link. Anyone with the complete link can read this copy.</p>
-      <div class="share-actions"><button class="share-primary" id="native-share" type="button"><svg><use href="#i-share"/></svg><span>Share private link</span></button><button id="copy-share" type="button"><svg><use href="#i-link"/></svg><span>Copy link</span></button><button id="download-markdown" type="button"><svg><use href="#i-export"/></svg><span>Markdown</span></button></div>
+      <section class="live-share-panel" id="live-share-panel" hidden>
+        <div><strong>Live private link</strong><p>Share one note without sharing your notebook. Update the link when the note changes.</p></div>
+        <label><span>Expires</span><select id="live-share-expiry"><option value="1">In 1 day</option><option value="7" selected>In 7 days</option><option value="30">In 30 days</option></select></label>
+        <div class="live-share-actions"><button id="live-share-create" type="button">Create live link</button><button id="live-share-revoke" type="button" hidden>Turn off</button></div>
+        <small id="live-share-status">The link can be updated or turned off later.</small>
+      </section>
+      <div class="share-actions"><button class="share-primary" id="native-share" type="button"><svg><use href="#i-share"/></svg><span id="native-share-label">Share private link</span></button><button id="copy-share" type="button"><svg><use href="#i-link"/></svg><span id="copy-share-label">Copy link</span></button><button id="download-markdown" type="button"><svg><use href="#i-export"/></svg><span>Markdown</span></button></div>
       <p class="share-foot" id="share-status">Changes made later will not alter the shared copy.</p>
     </dialog>
 
@@ -250,7 +256,7 @@
       <article class="shared-sheet">
         <header><div class="shared-brand"><i></i><span>Jotfield</span><b>Shared note</b></div><button id="shared-note-close" type="button">Open my notes</button></header>
         <div class="shared-note-paper"><span id="shared-note-date"></span><h1 id="shared-note-title"></h1><div id="shared-note-body"></div></div>
-        <footer><span>Private read-only copy</span><button id="shared-note-copy" type="button"><svg><use href="#i-link"/></svg>Copy text</button></footer>
+        <footer><span id="shared-note-kind">Private read-only copy</span><button id="shared-note-copy" type="button"><svg><use href="#i-link"/></svg>Copy text</button></footer>
       </article>
     </dialog>
 

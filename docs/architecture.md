@@ -10,7 +10,7 @@ The production build uses Vite so dependencies, environment configuration, sourc
 
 ## Security boundary
 
-Authentication and note encryption are separate systems. Supabase Auth proves who is signed in. Jotfield will encrypt note content before it leaves the browser.
+Authentication and note encryption are separate systems. Supabase Auth proves who is signed in. Jotfield encrypts note content before it leaves the browser.
 
 The database stores ciphertext, nonces, encrypted operations, wrapped workspace keys, membership, and version metadata. Row Level Security provides a second authorization boundary for every table. Private Realtime channels will use the same membership rules.
 
@@ -28,6 +28,14 @@ Future encryption work must include:
 Every local change receives a protocol version, unique operation ID, kind, client timestamp, and payload. Operation IDs make retries safe. Server timestamps establish an ordered retrieval cursor. Note content versions prevent silent overwrites.
 
 The current BroadcastChannel tab synchronization now uses the same envelope shape planned for cloud synchronization. This lets the cloud transport arrive without changing how the editor describes committed changes.
+
+## Private link boundary
+
+Offline snapshot links keep both the encrypted note and its random AES-256-GCM key in the URL fragment. Live links store the ciphertext, nonce, expiration, and owner identity in Supabase. Their random decryption key remains after the `#` in the link, so it is handled by the browser and is not included in the page request.
+
+Live links expire after 1, 7, or 30 days. Their owner can refresh the encrypted copy without changing the link or turn the link off immediately. Anonymous visitors can read only one active encrypted row through a narrow database function. Direct anonymous table access remains revoked.
+
+Live links are read-only. Account collaboration will use separate local workspace stores and per-member wrapped keys so a guest notebook can never merge into an owner's personal workspace.
 
 ## Deployment environments
 

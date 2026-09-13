@@ -22,6 +22,7 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 - Instant conflict-aware updates between open Jotfield tabs
 - Installable standalone experience and a purpose-built mobile dock
 - Encrypted read-only links for sharing a single note without an account
+- Revocable live note links with 1-day, 7-day, or 30-day expiration
 - Native device sharing with a copy-link fallback
 - Clean shared-note reading view and Markdown downloads
 - Multi-file imports for Markdown, plain text, and HTML
@@ -58,7 +59,7 @@ Jotfield combines the interaction patterns people return to across established n
 - Obsidian inspired explicit links and backlinks between notes.
 - Fantastical inspired context-first navigation, polished keyboard control, and an interface that feels like one instrument.
 
-Jotfield keeps these ideas inside a focused notebook. Local use does not require AI, a subscription, or a cloud account. Encrypted vault files provide private device transfer without sending the passphrase or readable notes to a server. Private note links place an encrypted, read-only copy in the URL fragment, which browsers do not send to the host.
+Jotfield keeps these ideas inside a focused notebook. Local use does not require AI, a subscription, or a cloud account. Encrypted vault files provide private device transfer without sending the passphrase or readable notes to a server. Snapshot links carry the encrypted note in the URL. Signed-in members can also make a live link that stores only ciphertext on the server and keeps its decryption key in the browser-only URL fragment.
 
 ## Running locally
 
