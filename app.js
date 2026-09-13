@@ -155,6 +155,7 @@ function setCloudSyncStatus(status, detail = '') {
     locked: 'Enter your sync passphrase to open this device.',
     syncing: 'Encrypting and syncing...',
     synced: 'Encrypted and up to date.',
+    offline: 'Offline. Changes will sync when you reconnect.',
     error: detail || 'Sync needs attention.',
   };
   label.textContent = copy[status] || copy.off;
@@ -165,6 +166,7 @@ function setCloudSyncStatus(status, detail = '') {
   saveState.classList.toggle('cloud-synced', status === 'synced');
   if (status === 'syncing') saveState.lastChild.textContent = ' Encrypting';
   if (status === 'synced') saveState.lastChild.textContent = ' Encrypted sync';
+  if (status === 'offline') saveState.lastChild.textContent = ' Saved offline';
   if (status === 'error' || status === 'locked' || status === 'off') saveState.lastChild.textContent = ' Saved locally';
 }
 
@@ -1956,6 +1958,8 @@ window.addEventListener('appinstalled', () => {
 });
 window.addEventListener('online', () => { $('#device-status').textContent = 'Online. Open tabs stay in step instantly.'; });
 window.addEventListener('offline', () => { $('#device-status').textContent = 'Offline. Every local feature remains available.'; });
+window.addEventListener('online', () => { cloudSync?.push(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') cloudSync?.refresh(); });
 
 function setupControlTooltips() {
   const tooltip = $('#control-tooltip');

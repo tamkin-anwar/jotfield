@@ -490,6 +490,7 @@ dialog::backdrop { background: rgba(2, 4, 9, 0.64); backdrop-filter: blur(8px); 
 .account-sync-card p { margin: 4px 0 0; color: #8b8176; font-size: 10px; }
 .account-sync-card p[data-state="synced"] { color: #5f7d42; }
 .account-sync-card p[data-state="error"] { color: #b54031; }
+.account-sync-card p[data-state="offline"] { color: #a46425; }
 .account-sync-card label { display: grid; gap: 6px; }
 .account-sync-card label span { color: #8d8175; font-size: 8px; font-weight: 680; letter-spacing: .65px; text-transform: uppercase; }
 .account-sync-card input { height: 39px; padding: 0 11px; border: 1px solid var(--line); border-radius: 10px; outline: 0; background: rgba(255,255,255,.42); color: var(--ink); font: inherit; font-size: 11px; }

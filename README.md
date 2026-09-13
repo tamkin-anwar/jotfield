@@ -45,6 +45,7 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 - Responsive layouts for desktop, tablet, and mobile
 - Account interface for verified email signup, password sign-in, magic links, recovery, session control, and secure cloud account deletion
 - Optional end-to-end encrypted notebook sync with a separate passphrase that never leaves the device
+- Live encrypted updates across signed-in devices with offline retry and foreground refresh
 
 ## Product research
 
