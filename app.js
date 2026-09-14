@@ -2052,9 +2052,20 @@ $('.mobile-dock').addEventListener('click', (event) => {
   if (action === 'jot') { $('#quick-dialog').showModal(); requestAnimationFrame(() => $('#quick-input').focus()); }
   if (action === 'plan') openPlanner();
 });
-$('#editor').addEventListener('click', (event) => {
-  if (window.innerWidth <= 620 && event.clientY < 122 && event.clientX < 120) $('#editor').classList.remove('mobile-open');
-});
+$('#mobile-editor-back').addEventListener('click', () => $('#editor').classList.remove('mobile-open'));
+
+function syncMobileViewport() {
+  const viewport = window.visualViewport;
+  const viewportHeight = viewport?.height || window.innerHeight;
+  const keyboardOpen = window.innerHeight - viewportHeight > 140;
+  document.documentElement.style.setProperty('--visual-viewport-height', `${viewportHeight}px`);
+  document.documentElement.classList.toggle('keyboard-open', keyboardOpen);
+}
+
+window.visualViewport?.addEventListener('resize', syncMobileViewport);
+window.visualViewport?.addEventListener('scroll', syncMobileViewport);
+window.addEventListener('orientationchange', syncMobileViewport);
+syncMobileViewport();
 window.addEventListener('keydown', (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
@@ -2195,22 +2206,36 @@ function startLightField() {
   const resolution = gl.getUniformLocation(program, 'r');
   const time = gl.getUniformLocation(program, 't');
   const darkness = gl.getUniformLocation(program, 'd');
+  const compact = matchMedia('(max-width: 620px), (pointer: coarse)').matches;
   const resize = () => {
-    const scale = Math.min(devicePixelRatio, 2);
-    canvas.width = Math.round(innerWidth * scale);
-    canvas.height = Math.round(innerHeight * scale);
+    const scale = Math.min(devicePixelRatio, compact ? 1.5 : 2);
+    canvas.width = Math.round(canvas.clientWidth * scale);
+    canvas.height = Math.round(canvas.clientHeight * scale);
     gl.viewport(0, 0, canvas.width, canvas.height);
   };
   addEventListener('resize', resize);
   resize();
+  let animationFrame = 0;
+  let lastPaint = 0;
+  const frameInterval = compact ? 1000 / 30 : 0;
   const frame = (stamp) => {
+    if (stamp - lastPaint < frameInterval) {
+      animationFrame = requestAnimationFrame(frame);
+      return;
+    }
+    lastPaint = stamp;
     gl.uniform2f(resolution, canvas.width, canvas.height);
     gl.uniform1f(time, stamp / 1000);
     gl.uniform1f(darkness, document.documentElement.dataset.theme === 'dark' ? 1 : 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
-    requestAnimationFrame(frame);
+    animationFrame = requestAnimationFrame(frame);
   };
-  requestAnimationFrame(frame);
+  const updateAnimation = () => {
+    cancelAnimationFrame(animationFrame);
+    if (!document.hidden) animationFrame = requestAnimationFrame(frame);
+  };
+  document.addEventListener('visibilitychange', updateAnimation);
+  updateAnimation();
 }
 
 startLightField();
