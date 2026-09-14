@@ -4,6 +4,7 @@ import { makeSyncEnvelope } from './src/cloud/contracts.js';
 import { createEncryptedSync } from './src/cloud/sync.js';
 import { createLiveShare, liveShareUrl, readLiveShare, readLiveShareFragment, revokeLiveShare, updateLiveShare } from './src/cloud/shares.js';
 import { transitionView } from './src/motion.js';
+import { createEncryptedBackup, MAX_BACKUP_SIZE, openEncryptedBackup } from './src/backup.js';
 
 const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
@@ -99,6 +100,8 @@ cloudClientPromise.catch(() => { document.documentElement.dataset.cloud = 'unava
 let accountSession = null;
 let accountMode = 'signin';
 let cloudSync;
+let backupMode = 'download';
+let pendingBackupFile = null;
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 let themeChoice = localStorage.getItem(THEME_KEY) || 'system';
@@ -332,28 +335,35 @@ function base64ToBytes(value) {
   return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
 }
 
-async function vaultKey(passphrase, salt) {
-  const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' }, material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+function openBackupDialog(mode, file = null) {
+  backupMode = mode;
+  pendingBackupFile = file;
+  const restoring = mode === 'restore';
+  $('#backup-title').textContent = restoring ? 'Restore encrypted backup' : 'Download encrypted backup';
+  $('#backup-description').textContent = restoring
+    ? 'Enter the password used when this backup was created. Its notes will merge with this notebook.'
+    : 'Choose a password for this backup. You will need it to restore the file.';
+  $('#backup-file').hidden = !restoring;
+  $('#backup-file').textContent = restoring ? `${file.name} · ${Math.max(1, Math.round(file.size / 1024))} KB` : '';
+  $('#vault-confirm-field').hidden = restoring;
+  $('#vault-passphrase').autocomplete = 'off';
+  $('#backup-submit').textContent = restoring ? 'Restore backup' : 'Download backup';
+  $('#backup-warning').textContent = restoring
+    ? 'Existing notes are kept. When two copies match, Jotfield keeps the newer one.'
+    : 'Keep this password somewhere safe. Jotfield cannot recover it.';
+  $('#vault-passphrase').value = '';
+  $('#vault-confirm').value = '';
+  accountMessage($('#backup-message'), '');
+  $('#backup-dialog').showModal();
+  requestAnimationFrame(() => $('#vault-passphrase').focus());
 }
 
-async function sealVault(passphrase) {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await vaultKey(passphrase, salt);
-  const payload = new TextEncoder().encode(JSON.stringify({ product: 'Jotfield', version: 1, exported: now(), state }));
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, payload);
-  return JSON.stringify({ product: 'Jotfield Vault', version: 1, kdf: 'PBKDF2-SHA256', iterations: 310000, cipher: 'AES-256-GCM', salt: bytesToBase64(salt), iv: bytesToBase64(iv), data: bytesToBase64(new Uint8Array(ciphertext)) });
-}
-
-async function openVault(file, passphrase) {
-  const vault = JSON.parse(await file.text());
-  if (vault.product !== 'Jotfield Vault' || vault.version !== 1) throw new Error('Invalid vault');
-  const key = await vaultKey(passphrase, base64ToBytes(vault.salt));
-  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64ToBytes(vault.iv) }, key, base64ToBytes(vault.data));
-  const payload = JSON.parse(new TextDecoder().decode(plaintext));
-  if (payload.product !== 'Jotfield' || !payload.state?.notes) throw new Error('Invalid notebook');
-  return payload.state;
+function closeBackupDialog() {
+  $('#backup-dialog').close();
+  pendingBackupFile = null;
+  $('#vault-passphrase').value = '';
+  $('#vault-confirm').value = '';
+  $('#vault-input').value = '';
 }
 
 function bytesToBase64Url(bytes) {
@@ -1820,38 +1830,55 @@ $('#capture-form').addEventListener('submit', (event) => {
   createNote({ title, body, html: `${plainTextHTML(text)}${sourceLine}`, space: 'personal' });
   toast('Capture saved');
 });
-$('#vault-export').addEventListener('click', async () => {
-  const passphrase = $('#vault-passphrase').value;
-  if (passphrase.length < 10) { toast('Use at least 10 characters'); return; }
-  try {
-    const encrypted = await sealVault(passphrase);
-    const blob = new Blob([encrypted], { type: 'application/jotfield-vault' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url; anchor.download = `jotfield-vault-${todayKey()}.jotvault`; anchor.click();
-    URL.revokeObjectURL(url);
-    $('#vault-passphrase').value = '';
-    toast('Encrypted vault sealed');
-  } catch { toast('Could not seal this vault'); }
-});
-$('#vault-import').addEventListener('click', () => {
-  if ($('#vault-passphrase').value.length < 10) { toast('Enter the vault passphrase first'); return; }
-  $('#vault-input').click();
-});
+$('#vault-export').addEventListener('click', () => openBackupDialog('download'));
+$('#vault-import').addEventListener('click', () => $('#vault-input').click());
 $('#vault-input').addEventListener('change', async (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
+  if (file.size > MAX_BACKUP_SIZE) { toast('That backup is too large'); event.target.value = ''; return; }
+  openBackupDialog('restore', file);
+});
+$('#backup-close').addEventListener('click', closeBackupDialog);
+$('#backup-cancel').addEventListener('click', closeBackupDialog);
+$('#backup-dialog').addEventListener('close', () => {
+  pendingBackupFile = null;
+  $('#vault-passphrase').value = '';
+  $('#vault-confirm').value = '';
+  $('#vault-input').value = '';
+});
+$('#backup-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const passphrase = $('#vault-passphrase').value;
+  if (passphrase.length < 12) { $('#vault-passphrase').reportValidity(); return; }
+  if (backupMode === 'download' && passphrase !== $('#vault-confirm').value) {
+    accountMessage($('#backup-message'), 'Those backup passwords do not match.', 'error');
+    $('#vault-confirm').focus();
+    return;
+  }
+  $('#backup-submit').disabled = true;
   try {
-    const incoming = await openVault(file, $('#vault-passphrase').value);
-    incoming.tasks = Array.isArray(incoming.tasks) ? incoming.tasks : [];
-    state = mergeNotebook(state, incoming);
-    selectedId = state.notes.some((note) => note.id === selectedId) ? selectedId : state.notes[0]?.id || null;
-    persist(); render();
-    $('#vault-passphrase').value = '';
-    $('#settings-dialog').close();
-    toast('Encrypted vault opened and merged');
-  } catch { toast('Passphrase or vault is not valid'); }
-  event.target.value = '';
+    if (backupMode === 'download') {
+      const encrypted = await createEncryptedBackup(state, passphrase, now());
+      const blob = new Blob([encrypted], { type: 'application/jotfield-vault' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url; anchor.download = `jotfield-backup-${todayKey()}.jotvault`; anchor.click();
+      URL.revokeObjectURL(url);
+      closeBackupDialog();
+      toast('Encrypted backup downloaded');
+    } else {
+      const incoming = await openEncryptedBackup(pendingBackupFile, passphrase);
+      incoming.tasks = Array.isArray(incoming.tasks) ? incoming.tasks : [];
+      state = mergeNotebook(state, incoming);
+      selectedId = state.notes.some((note) => note.id === selectedId) ? selectedId : state.notes[0]?.id || null;
+      persist(); render();
+      closeBackupDialog();
+      $('#settings-dialog').close();
+      toast('Backup restored');
+    }
+  } catch {
+    accountMessage($('#backup-message'), backupMode === 'restore' ? 'That password or backup could not be opened.' : 'Could not create this backup.', 'error');
+  } finally { $('#backup-submit').disabled = false; }
 });
 $('#install-button').addEventListener('click', async () => {
   if (installEvent) {

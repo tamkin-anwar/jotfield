@@ -4,7 +4,7 @@ Please report a suspected Jotfield security issue privately to the repository ow
 
 ## Current product boundary
 
-The published app stores the working notebook locally in the browser. Encrypted vault exports and private note links use browser cryptography. Cloud accounts and cloud synchronization are not active until the production environment is configured and the related account and encryption batches are complete.
+The published app stores the working notebook locally in the browser. Encrypted backups and private note links use browser cryptography. Production cloud accounts add end-to-end encrypted synchronization while keeping readable note content off the server.
 
 ## Repository secrets
 

@@ -274,9 +274,9 @@
         </div>
       </section>
       <section class="settings-section everywhere-settings">
-        <div class="settings-copy"><h3>Private vault</h3><p>Move your complete notebook between devices in an encrypted file. Your passphrase never leaves this device.</p></div>
-        <label class="vault-pass"><span>Vault passphrase</span><input id="vault-passphrase" type="password" autocomplete="new-password" minlength="10" placeholder="At least 10 characters" /></label>
-        <div class="vault-actions"><button type="button" id="vault-export"><svg><use href="#i-export"/></svg>Seal vault</button><button type="button" id="vault-import"><svg><use href="#i-import"/></svg>Open vault</button></div>
+        <div class="settings-copy"><h3>Encrypted backup</h3><p>Keep an independent copy of your complete notebook. It stays private even outside Jotfield.</p></div>
+        <div class="backup-note"><strong>Your copy, under your control</strong><span>Useful if you lose access to a device, close your account, or want a long-term archive.</span></div>
+        <div class="vault-actions"><button type="button" id="vault-export"><svg><use href="#i-export"/></svg>Download backup</button><button type="button" id="vault-import"><svg><use href="#i-import"/></svg>Restore backup</button></div>
       </section>
       <section class="settings-section device-settings">
         <div class="settings-copy"><h3>This device</h3><p id="device-status">Changes appear instantly in every open Jotfield tab.</p></div>
@@ -288,6 +288,19 @@
         <p class="ecosystem-status" id="ecosystem-status">The web clipper saves the page title, address, and selected text.</p>
       </section>
       <p class="settings-foot">Local use never requires an account.</p>
+    </dialog>
+
+    <dialog class="backup-dialog" id="backup-dialog">
+      <form id="backup-form">
+        <div class="backup-dialog-head"><div><span>PRIVATE COPY</span><h2 id="backup-title">Download encrypted backup</h2></div><button id="backup-close" type="button" aria-label="Close backup"><svg><use href="#i-close"/></svg></button></div>
+        <p id="backup-description">Choose a password for this backup. You will need it to restore the file.</p>
+        <div class="backup-file" id="backup-file" hidden></div>
+        <label><span>Backup password</span><input id="vault-passphrase" name="jotfield-backup-password" type="password" autocomplete="off" minlength="12" placeholder="At least 12 characters" required aria-describedby="backup-warning" /></label>
+        <label id="vault-confirm-field"><span>Confirm password</span><input id="vault-confirm" name="jotfield-backup-confirmation" type="password" autocomplete="off" minlength="12" placeholder="Enter it again" /></label>
+        <p class="backup-warning" id="backup-warning">Keep this password somewhere safe. Jotfield cannot recover it.</p>
+        <p class="account-message" id="backup-message" role="status" aria-live="polite" aria-atomic="true"></p>
+        <div class="backup-dialog-actions"><button id="backup-cancel" type="button">Cancel</button><button class="account-primary" id="backup-submit" type="submit">Download backup</button></div>
+      </form>
     </dialog>
 
     <dialog class="capture-dialog" id="capture-dialog">

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jotfield-private-cloud-1';
+const CACHE_NAME = 'jotfield-encrypted-backup-1';
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './jotfield-icon.svg'];
 
 self.addEventListener('install', (event) => {

@@ -17,7 +17,7 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 - A task planner with agenda and month views
 - Natural date recognition for today, tomorrow, weekdays, times, and repeat schedules
 - Local reminders with optional browser notifications while Jotfield is open
-- Encrypted portable vaults for moving a complete notebook between devices
+- Password-protected encrypted backups that restore by safely merging notes
 - AES-256-GCM encryption with a passphrase-derived local key
 - Instant conflict-aware updates between open Jotfield tabs
 - Installable standalone experience and a purpose-built mobile dock
@@ -60,7 +60,7 @@ Jotfield combines the interaction patterns people return to across established n
 - Obsidian inspired explicit links and backlinks between notes.
 - Fantastical inspired context-first navigation, polished keyboard control, and an interface that feels like one instrument.
 
-Jotfield keeps these ideas inside a focused notebook. Local use does not require AI, a subscription, or a cloud account. Encrypted vault files provide private device transfer without sending the passphrase or readable notes to a server. Snapshot links carry the encrypted note in the URL. Signed-in members can also make a live link that stores only ciphertext on the server and keeps its decryption key in the browser-only URL fragment.
+Jotfield keeps these ideas inside a focused notebook. Local use does not require AI, a subscription, or a cloud account. Encrypted backup files provide an independent copy without sending the password or readable notes to a server. Restoring merges the backup with the current notebook and keeps the newer version of matching notes. Snapshot links carry the encrypted note in the URL. Signed-in members can also make a live link that stores only ciphertext on the server and keeps its decryption key in the browser-only URL fragment.
 
 ## Running locally
 
