@@ -32,8 +32,8 @@ Both values are designed to be visible to browsers. Authorization comes from Row
 - Local sign-out ends the current browser session.
 - Global sign-out revokes refresh tokens on every device.
 - Account deletion runs in an authenticated Edge Function and removes owned cloud workspaces before deleting the Auth user.
-- Encrypted sync derives an AES-GCM key in the browser. Supabase stores ciphertext, a random nonce, and a non-secret salt.
-- A trusted device keeps its non-extractable sync key in IndexedDB. New devices require the same sync passphrase.
+- Private cloud derives an AES-GCM key in the browser. Supabase stores ciphertext, a random nonce, and a non-secret salt.
+- A trusted device keeps its non-extractable sync key in IndexedDB. New devices require the same private sync password once, then update automatically.
 - Jotfield merges notes by their update time before upload and uses the cloud content version to reject stale writes.
 - Authenticated Realtime subscriptions deliver encrypted notebook changes to other devices. Offline edits retry automatically after the connection returns.
 - Signed-in members can create live links for individual notes. The server stores ciphertext and link controls, while the decryption key stays in the URL fragment.

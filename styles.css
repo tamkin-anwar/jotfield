@@ -498,19 +498,35 @@ dialog::backdrop { background: rgba(2, 4, 9, 0.64); backdrop-filter: blur(8px); 
 .account-local-card strong { display: block; margin-top: 5px; color: #343b53; font-size: 16px; }
 .account-local-card p { margin: 9px 0 0; color: #7c7d76; font-size: 10px; }
 .account-local-card i { position: absolute; width: 90px; height: 90px; right: -30px; top: -37px; border: 1px solid rgba(49,92,245,.12); border-radius: 45% 55% 62% 38%; transform: rotate(26deg); }
-.account-sync-card { display: grid; gap: 11px; margin: 0 0 19px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.25); }
+.account-sync-card { display: grid; gap: 14px; margin: 0 0 19px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.25); }
+.account-sync-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.account-sync-head > span { flex: none; padding: 5px 8px; border-radius: 999px; background: rgba(107,99,90,.07); color: #81776d; font-size: 8px; font-weight: 720; letter-spacing: .25px; }
+.account-sync-card[data-mode="trusted"] .account-sync-head > span { background: rgba(109,145,78,.11); color: #5f7d42; }
+.account-sync-card[data-mode="locked"] .account-sync-head > span { background: rgba(225,134,42,.1); color: #9c642c; }
 .account-sync-card h3 { margin: 0; color: #554c43; font-size: 11px; }
 .account-sync-card p { margin: 4px 0 0; color: #8b8176; font-size: 10px; }
 .account-sync-card p[data-state="synced"] { color: #5f7d42; }
 .account-sync-card p[data-state="error"] { color: #b54031; }
 .account-sync-card p[data-state="offline"] { color: #a46425; }
+.account-sync-setup { display: grid; gap: 11px; }
+.account-sync-setup[hidden], .account-sync-trusted[hidden], .account-sync-card label[hidden] { display: none; }
+.account-sync-prompt { padding: 11px 12px; border-radius: 11px; background: rgba(49,92,245,.045); }
+.account-sync-prompt strong { color: #4c463f; font-size: 10px; }
+.account-sync-prompt p { line-height: 1.5; }
 .account-sync-card label { display: grid; gap: 6px; }
 .account-sync-card label span { color: #8d8175; font-size: 8px; font-weight: 680; letter-spacing: .65px; text-transform: uppercase; }
 .account-sync-card input { height: 39px; padding: 0 11px; border: 1px solid var(--line); border-radius: 10px; outline: 0; background: rgba(255,255,255,.42); color: var(--ink); font: inherit; font-size: 11px; }
-.account-sync-actions { display: flex; gap: 7px; }
-.account-sync-actions button { min-height: 34px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.36); color: #635a51; font: inherit; font-size: 9px; cursor: pointer; }
-.account-sync-actions button:first-child { border-color: transparent; background: #315cf5; color: white; }
+.account-sync-setup > button, .account-sync-trusted button { min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.36); color: #635a51; font: inherit; font-size: 9px; cursor: pointer; }
+.account-sync-setup > button { border-color: transparent; background: #315cf5; color: white; }
 .account-sync-card small { color: #9b9186; font-size: 9px; line-height: 1.45; }
+.account-sync-trusted { display: grid; gap: 13px; }
+.account-sync-trusted > div { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 12px; background: rgba(109,145,78,.07); }
+.account-sync-check { width: 25px; height: 25px; display: grid; flex: none; place-items: center; border-radius: 50%; background: rgba(109,145,78,.14); color: #5f7d42; font-size: 12px; font-weight: 760; }
+.account-sync-trusted p { margin: 0; }
+.account-sync-trusted p strong, .account-sync-trusted p span { display: block; }
+.account-sync-trusted p strong { color: #4c463f; font-size: 10px; }
+.account-sync-trusted p span { margin-top: 3px; color: #8b8176; font-size: 9px; line-height: 1.4; }
+.account-sync-trusted button { justify-self: start; }
 .account-security { padding: 2px 0 20px; border-bottom: 1px solid var(--line); }
 .account-security h3, .account-danger h3 { margin: 0; color: #554c43; font-size: 11px; }
 .account-security p, .account-danger p { margin: 5px 0 12px; color: #958a7e; font-size: 10px; line-height: 1.45; }
@@ -545,9 +561,11 @@ html[data-theme="dark"] .account-form input, html[data-theme="dark"] .delete-acc
 html[data-theme="dark"] .password-dialog input { background: rgba(255,245,230,.035); color: #eee5db; }
 html[data-theme="dark"] .account-local-card { background: linear-gradient(135deg,rgba(70,101,215,.12),rgba(163,197,84,.07)); }
 html[data-theme="dark"] .account-local-card strong { color: #dce3ff; }
-html[data-theme="dark"] .account-sync-card, html[data-theme="dark"] .account-sync-card input, html[data-theme="dark"] .account-sync-actions button { background: rgba(255,245,230,.035); color: #eee5db; }
-html[data-theme="dark"] .account-sync-card h3 { color: #eee5db; }
-html[data-theme="dark"] .account-sync-actions button:first-child { background: #5474f7; }
+html[data-theme="dark"] .account-sync-card, html[data-theme="dark"] .account-sync-card input, html[data-theme="dark"] .account-sync-trusted button { background: rgba(255,245,230,.035); color: #eee5db; }
+html[data-theme="dark"] .account-sync-card h3, html[data-theme="dark"] .account-sync-prompt strong, html[data-theme="dark"] .account-sync-trusted p strong { color: #eee5db; }
+html[data-theme="dark"] .account-sync-prompt { background: rgba(84,116,247,.07); }
+html[data-theme="dark"] .account-sync-trusted > div { background: rgba(123,157,89,.08); }
+html[data-theme="dark"] .account-sync-setup > button { background: #5474f7; }
 
 @media (max-width: 860px) {
   .account-button span { display: none; }

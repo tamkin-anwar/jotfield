@@ -304,7 +304,7 @@
         <button id="account-close" type="button" aria-label="Close account"><svg><use href="#i-close"/></svg></button>
       </div>
       <section class="account-entry" id="account-entry">
-        <div class="account-intro"><span>YOUR NOTES, WHERE YOU ARE</span><h2>Keep your field close.</h2><p>Your notebook continues working on this device. An account adds a private identity for secure synchronization.</p></div>
+        <div class="account-intro"><span>YOUR NOTES, WHERE YOU ARE</span><h2>Keep your field close.</h2><p>Your notebook works without an account. Sign in to keep it up to date across your devices.</p></div>
         <div class="account-tabs" role="tablist" aria-label="Account action">
           <button class="active" id="account-signin-tab" type="button" role="tab" aria-selected="true">Sign in</button>
           <button id="account-create-tab" type="button" role="tab" aria-selected="false">Create account</button>
@@ -323,12 +323,19 @@
       <section class="account-home" id="account-home" hidden>
         <div class="account-identity"><span class="account-avatar" id="account-avatar">J</span><div><strong id="account-display-name">Jotfield member</strong><span id="account-address"></span></div><b id="account-verification">Verified</b></div>
         <div class="account-local-card"><div><span>ON THIS DEVICE</span><strong id="account-note-count">0 notes</strong></div><i></i><p>Your local notebook remains available whenever you sign out.</p></div>
-        <div class="account-sync-card">
-          <div><h3>Encrypted sync</h3><p id="cloud-sync-status" data-state="off">Sign in to use encrypted sync.</p></div>
-          <label><span>Sync passphrase</span><input id="cloud-sync-passphrase" type="password" autocomplete="off" minlength="12" placeholder="At least 12 characters" /></label>
-          <label><span>Confirm passphrase</span><input id="cloud-sync-confirm" type="password" autocomplete="off" minlength="12" placeholder="Enter it again" /></label>
-          <div class="account-sync-actions"><button id="cloud-sync-unlock" type="button">Turn on sync</button><button id="cloud-sync-lock" type="button">Forget this device</button></div>
-          <small>This passphrase encrypts notes before they leave your device. Jotfield cannot recover it.</small>
+        <div class="account-sync-card" id="account-sync-card" data-mode="off">
+          <div class="account-sync-head"><div><h3>Private cloud</h3><p id="cloud-sync-status" data-state="off" role="status" aria-live="polite" aria-atomic="true">Waiting for your account.</p></div><span id="cloud-sync-badge">Not connected</span></div>
+          <div class="account-sync-setup" id="cloud-sync-setup">
+            <div class="account-sync-prompt"><strong id="cloud-sync-title">Keep your notes on every device</strong><p id="cloud-sync-explanation">Choose a private sync password. Jotfield uses it to encrypt your notebook before it leaves this device.</p></div>
+            <label><span>Private sync password</span><input id="cloud-sync-passphrase" type="password" autocomplete="new-password" minlength="12" placeholder="At least 12 characters" aria-describedby="cloud-sync-recovery" /></label>
+            <label id="cloud-sync-confirm-field"><span>Confirm password</span><input id="cloud-sync-confirm" type="password" autocomplete="new-password" minlength="12" placeholder="Enter it again" /></label>
+            <button id="cloud-sync-unlock" type="button">Turn on private sync</button>
+            <small id="cloud-sync-recovery">Keep this password somewhere safe. Jotfield cannot recover it or read your notes.</small>
+          </div>
+          <div class="account-sync-trusted" id="cloud-sync-trusted" hidden>
+            <div><span class="account-sync-check" aria-hidden="true">✓</span><p><strong>This device is trusted</strong><span>Your notes update automatically whenever you are online.</span></p></div>
+            <button id="cloud-sync-lock" type="button">Forget this device</button>
+          </div>
         </div>
         <div class="account-security"><h3>Sessions</h3><p>End this session or sign out every device connected to your account.</p><div><button id="account-signout" type="button">Sign out here</button><button id="account-signout-all" type="button">Sign out everywhere</button></div></div>
         <div class="account-danger"><div><h3>Delete account</h3><p>Permanently remove your cloud identity and cloud workspace. Notes stored only on this device remain here.</p></div><button id="account-delete-open" type="button">Delete</button></div>

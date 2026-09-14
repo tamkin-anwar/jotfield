@@ -152,21 +152,35 @@ function setCloudSyncStatus(status, detail = '') {
   const action = $('#cloud-sync-unlock');
   if (!label || !action) return;
   const copy = {
-    off: 'Sign in to use encrypted sync.',
-    locked: 'Enter your sync passphrase to open this device.',
-    syncing: 'Encrypting and syncing...',
-    synced: 'Encrypted and up to date.',
-    offline: 'Offline. Changes will sync when you reconnect.',
-    error: detail || 'Sync needs attention.',
+    off: 'Waiting for your account.',
+    setup: 'Ready to protect your notebook.',
+    locked: 'Unlock your notebook on this device.',
+    syncing: 'Updating your private notebook...',
+    synced: 'Up to date',
+    offline: 'Saved here. Updates will continue when you are online.',
+    error: detail || 'Private cloud needs attention.',
   };
   label.textContent = copy[status] || copy.off;
   label.dataset.state = status;
-  action.textContent = status === 'synced' ? 'Sync now' : 'Turn on sync';
+  const setup = status === 'setup' || (status === 'error' && !cloudSync?.isUnlocked() && cloudSync?.needsSetup());
+  const trusted = ['syncing', 'synced', 'offline'].includes(status) || (status === 'error' && cloudSync?.isUnlocked());
+  const locked = status === 'locked' || (status === 'error' && !cloudSync?.isUnlocked());
+  $('#account-sync-card').dataset.mode = trusted ? 'trusted' : (setup ? 'setup' : (locked ? 'locked' : 'off'));
+  $('#cloud-sync-setup').hidden = trusted || status === 'off';
+  $('#cloud-sync-trusted').hidden = !trusted;
+  $('#cloud-sync-confirm-field').hidden = !setup;
+  $('#cloud-sync-title').textContent = setup ? 'Keep your notes on every device' : 'Open your notes on this device';
+  $('#cloud-sync-explanation').textContent = setup
+    ? 'Choose a private sync password. Jotfield uses it to encrypt your notebook before it leaves this device.'
+    : 'Enter the private sync password you chose when you first turned on cloud sync.';
+  $('#cloud-sync-passphrase').autocomplete = setup ? 'new-password' : 'current-password';
+  action.textContent = setup ? 'Turn on private sync' : 'Unlock notes';
+  $('#cloud-sync-badge').textContent = trusted ? 'Protected' : (setup ? 'Set up' : (locked ? 'Locked' : 'Not connected'));
   const saveState = $('#save-state');
   saveState.classList.toggle('cloud-syncing', status === 'syncing');
   saveState.classList.toggle('cloud-synced', status === 'synced');
-  if (status === 'syncing') saveState.lastChild.textContent = ' Encrypting';
-  if (status === 'synced') saveState.lastChild.textContent = ' Encrypted sync';
+  if (status === 'syncing') saveState.lastChild.textContent = ' Updating';
+  if (status === 'synced') saveState.lastChild.textContent = ' Up to date';
   if (status === 'offline') saveState.lastChild.textContent = ' Saved offline';
   if (status === 'error' || status === 'locked' || status === 'off') saveState.lastChild.textContent = ' Saved locally';
 }
@@ -1655,18 +1669,17 @@ $('#account-button').addEventListener('click', () => {
 });
 $('#account-close').addEventListener('click', () => $('#account-dialog').close());
 $('#cloud-sync-unlock').addEventListener('click', async () => {
-  if (cloudSync.isUnlocked()) { await cloudSync.push(); return; }
   const passphrase = $('#cloud-sync-passphrase').value;
   const confirmation = $('#cloud-sync-confirm').value;
   if (passphrase.length < 12) { $('#cloud-sync-passphrase').reportValidity(); return; }
-  if (passphrase !== confirmation) { setCloudSyncStatus('error', 'The sync passphrases do not match.'); $('#cloud-sync-confirm').focus(); return; }
+  if (cloudSync.needsSetup() && passphrase !== confirmation) { setCloudSyncStatus('error', 'Those private sync passwords do not match.'); $('#cloud-sync-confirm').focus(); return; }
   $('#cloud-sync-unlock').disabled = true;
   try {
     await cloudSync.unlock(passphrase);
     $('#cloud-sync-passphrase').value = '';
     $('#cloud-sync-confirm').value = '';
   } catch (error) {
-    setCloudSyncStatus('error', error.name === 'OperationError' ? 'That sync passphrase could not open this notebook.' : error.message);
+    setCloudSyncStatus('error', error.name === 'OperationError' ? 'That private sync password could not open this notebook.' : error.message);
   } finally { $('#cloud-sync-unlock').disabled = false; }
 });
 $('#cloud-sync-lock').addEventListener('click', async () => {

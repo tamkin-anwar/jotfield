@@ -46,6 +46,7 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
   let running = false;
   let channel = null;
   let retryCount = 0;
+  let configured = false;
   const client = () => clientPromise;
 
   async function store(mode = 'readonly') {
@@ -155,11 +156,13 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
     try {
       workspaceId = await personalWorkspace();
       const row = await cloudRow();
+      configured = Boolean(row);
       salt = readSalt(row);
       key = await deriveKey(passphrase, salt);
       if (row) await pullAndMerge(row);
       (await store('readwrite')).put({ key, salt, userId: session.user.id, workspaceId }, SYNC_KEY);
       await push();
+      configured = true;
       await startRealtime();
     } catch (error) {
       key = null;
@@ -171,10 +174,17 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
 
   async function start(nextSession) {
     session = nextSession;
-    if (!session) { await stopRealtime(); key = null; workspaceId = null; setStatus('off'); return; }
+    if (!session) { await stopRealtime(); key = null; workspaceId = null; configured = false; setStatus('off'); return; }
     const saved = await savedKey();
-    if (!saved || saved.userId !== session.user.id) { setStatus('locked'); return; }
+    if (!saved || saved.userId !== session.user.id) {
+      workspaceId = await personalWorkspace();
+      configured = Boolean(await cloudRow());
+      workspaceId = null;
+      setStatus(configured ? 'locked' : 'setup');
+      return;
+    }
     ({ key, salt, workspaceId } = saved);
+    configured = true;
     await push();
     await startRealtime();
   }
@@ -190,7 +200,7 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
     await stopRealtime();
     key = null; salt = null; workspaceId = null;
     try { (await store('readwrite')).delete(SYNC_KEY); } catch {}
-    setStatus(session ? 'locked' : 'off');
+    setStatus(session ? (configured ? 'locked' : 'setup') : 'off');
   }
 
   async function refresh() {
@@ -204,5 +214,5 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
     } catch (error) { setStatus('error', error.message); retry(); }
   }
 
-  return { start, unlock, schedule, push, refresh, lock, isUnlocked: () => Boolean(key) };
+  return { start, unlock, schedule, push, refresh, lock, isUnlocked: () => Boolean(key), needsSetup: () => !configured };
 }
