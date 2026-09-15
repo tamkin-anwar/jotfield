@@ -172,22 +172,27 @@
               <input class="title-input" id="title-input" aria-label="Note title" placeholder="Untitled" autocomplete="off" />
               <div class="note-tags" id="note-tags"></div>
               <div class="format-toolbar" role="toolbar" aria-label="Text formatting">
-                <button type="button" data-editor-command="bold" aria-label="Bold"><svg><use href="#i-bold"/></svg></button>
-                <button type="button" data-editor-command="italic" aria-label="Italic"><svg><use href="#i-italic"/></svg></button>
+                <button type="button" data-format="bold" aria-label="Bold" title="Bold (⌘B)"><svg><use href="#i-bold"/></svg></button>
+                <button type="button" data-format="italic" aria-label="Italic" title="Italic (⌘I)"><svg><use href="#i-italic"/></svg></button>
+                <button type="button" data-format="underline" aria-label="Underline" title="Underline (⌘U)"><u>U</u></button>
+                <button type="button" data-format="strike" aria-label="Strikethrough" title="Strikethrough (⌘⇧X)"><s>S</s></button>
                 <span></span>
-                <button type="button" data-block-command="h2" aria-label="Heading">H</button>
-                <button type="button" data-editor-command="insertUnorderedList" aria-label="Bulleted list"><svg><use href="#i-list-bullet"/></svg></button>
-                <button type="button" data-insert-checklist aria-label="Checklist"><svg><use href="#i-check"/></svg></button>
-                <button type="button" data-block-command="blockquote" aria-label="Quote"><svg><use href="#i-quote"/></svg></button>
-                <button type="button" data-block-command="pre" aria-label="Code block"><span class="code-mark">&lt;/&gt;</span></button>
+                <button type="button" data-format="paragraph" aria-label="Paragraph" title="Paragraph">¶</button>
+                <button type="button" data-format="h2" aria-label="Heading" title="Heading">H</button>
+                <button type="button" data-format="bullet" aria-label="Bulleted list" title="Bulleted list"><svg><use href="#i-list-bullet"/></svg></button>
+                <button type="button" data-format="ordered" aria-label="Numbered list" title="Numbered list"><span class="ordered-mark">1.</span></button>
+                <button type="button" data-insert-checklist data-format="checklist" aria-label="Checklist" title="Checklist"><svg><use href="#i-check"/></svg></button>
+                <button type="button" data-format="blockquote" aria-label="Quote" title="Quote"><svg><use href="#i-quote"/></svg></button>
+                <button type="button" data-format="code" aria-label="Code block" title="Code block"><span class="code-mark">&lt;/&gt;</span></button>
                 <span></span>
-                <button type="button" data-insert-link aria-label="Add link"><svg><use href="#i-link"/></svg></button>
-                <button type="button" data-attach aria-label="Attach file"><svg><use href="#i-attach"/></svg></button>
+                <button type="button" data-insert-link aria-label="Add link" title="Add link"><svg><use href="#i-link"/></svg></button>
+                <button type="button" data-attach aria-label="Attach file" title="Attach file"><svg><use href="#i-attach"/></svg></button>
+                <button type="button" data-format="clear" aria-label="Clear formatting" title="Clear formatting"><span class="clear-mark">Tx</span></button>
                 <span class="toolbar-spacer"></span>
-                <button type="button" data-editor-command="undo" aria-label="Undo"><svg><use href="#i-undo"/></svg></button>
-                <button type="button" data-editor-command="redo" aria-label="Redo"><svg><use href="#i-redo"/></svg></button>
+                <button type="button" data-format="undo" aria-label="Undo" title="Undo (⌘Z)"><svg><use href="#i-undo"/></svg></button>
+                <button type="button" data-format="redo" aria-label="Redo" title="Redo (⌘⇧Z)"><svg><use href="#i-redo"/></svg></button>
               </div>
-              <div class="body-input" id="body-input" contenteditable="true" role="textbox" aria-label="Note content" aria-multiline="true" data-placeholder="Start writing..." spellcheck="true"></div>
+              <div class="body-input" id="body-input"></div>
             </div>
             <div class="statusbar">
               <span id="word-count">0 words</span><span>Markdown shortcuts</span><span id="edited-time">Edited now</span>

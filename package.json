@@ -7,10 +7,19 @@
     "dev": "vite --host 127.0.0.1 --port 3000",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
-    "check": "node --check app.js && node --check src/backup.js && node --check src/cloud/client.js && node --check src/cloud/auth.js && node --check src/cloud/contracts.js && node --check src/cloud/sync.js && node --check src/cloud/shares.js && node --check src/motion.js && node scripts/check-writing.mjs && node scripts/check-cloud-crypto.mjs && node scripts/check-live-shares.mjs && node scripts/check-backup.mjs"
+    "check": "node --check app.js && node --check src/editor.js && node --check src/backup.js && node --check src/cloud/client.js && node --check src/cloud/auth.js && node --check src/cloud/contracts.js && node --check src/cloud/sync.js && node --check src/cloud/shares.js && node --check src/motion.js && node scripts/check-writing.mjs && node scripts/check-cloud-crypto.mjs && node scripts/check-live-shares.mjs && node scripts/check-backup.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
+    "prosemirror-commands": "^1.7.2",
+    "prosemirror-history": "^1.5.0",
+    "prosemirror-inputrules": "^1.5.1",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.11",
+    "prosemirror-schema-basic": "^1.2.4",
+    "prosemirror-schema-list": "^1.5.1",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.42.3",
     "vite": "^8.3.0"
   }
 }

@@ -272,7 +272,8 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
 .note-tags { display: flex; flex-wrap: wrap; gap: 7px; min-height: 27px; margin: 20px 0 22px; }
 .inline-tag { padding: 4px 8px; border: 1px solid rgba(119, 161, 239, 0.15); border-radius: 7px; background: rgba(69, 106, 176, 0.1); color: #8daee6; font-size: 11px; }
 .body-input { width: 100%; min-height: 55vh; padding: 0 0 100px; resize: none; border: 0; outline: 0; background: transparent; color: #bdc7d6; font: 400 17px/1.83 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif; letter-spacing: -0.08px; caret-color: var(--blue); }
-.body-input:empty:before { content: attr(data-placeholder); color: #b6ad9f; pointer-events: none; }
+.body-input.ProseMirror:focus { outline: 0; }
+.body-input.ProseMirror p:first-child:last-child:empty:before { content: attr(data-placeholder); color: #b6ad9f; pointer-events: none; }
 .body-input p { margin: 0 0 .82em; }
 .body-input h2 { margin: 1.35em 0 .45em; color: var(--ink); font: 500 1.55em/1.25 Georgia, "Times New Roman", serif; letter-spacing: -.35px; }
 .body-input blockquote { margin: 1.2em 0; padding: .1em 0 .1em 18px; border-left: 3px solid #ff5c35; color: var(--muted); }
@@ -283,7 +284,9 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
 .body-input .task-list li { display: grid; grid-template-columns: 20px 1fr; align-items: start; gap: 8px; margin: 6px 0; }
 .task-check { width: 18px; height: 18px; margin-top: 5px; border: 1.5px solid #a69b8d; border-radius: 6px; background: transparent; cursor: pointer; }
 .task-list li[data-checked="true"] .task-check { border-color: #ff5c35; background: #ff5c35; box-shadow: inset 0 0 0 4px #fff5e8; }
-.task-list li[data-checked="true"] > span { color: var(--faint); text-decoration: line-through; }
+.task-content { min-width: 0; }
+.task-content > p { margin: 0; }
+.task-list li[data-checked="true"] .task-content { color: var(--faint); text-decoration: line-through; }
 .attachment { margin: 20px 0; }
 .attachment img { display: block; max-width: 100%; max-height: 520px; border-radius: 14px; box-shadow: 0 14px 35px rgba(67,45,22,.12); }
 .attachment figcaption { margin-top: 7px; color: var(--faint); font: 10px/1.4 -apple-system, sans-serif; }
@@ -291,10 +294,13 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
 .format-toolbar { position: sticky; z-index: 3; top: -1px; display: flex; align-items: center; gap: 2px; min-height: 38px; margin: 0 0 20px; padding: 3px; border: 1px solid var(--line); border-radius: 11px; background: rgba(250,246,238,.88); box-shadow: 0 6px 18px rgba(76,52,26,.055); backdrop-filter: blur(16px); }
 .format-toolbar button { width: 31px; height: 30px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 650; }
 .format-toolbar button:hover { background: rgba(232,218,197,.6); color: var(--ink); }
+.format-toolbar button.active { background: rgba(255,92,53,.12); color: #d84a29; }
+.format-toolbar button:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
 .format-toolbar button svg { width: 15px; height: 15px; }
 .format-toolbar > span:not(.toolbar-spacer) { width: 1px; height: 18px; margin: 0 3px; background: var(--line); }
 .format-toolbar .toolbar-spacer { flex: 1; }
 .code-mark { font: 600 10px/1 "SFMono-Regular", Consolas, monospace; }
+.ordered-mark, .clear-mark { font: 650 11px/1 -apple-system, sans-serif; }
 .slash-menu { position: fixed; z-index: 60; width: 275px; padding: 6px; border: 1px solid var(--line-bright); border-radius: 14px; background: rgba(251,247,238,.97); box-shadow: 0 22px 65px rgba(63,42,20,.2); backdrop-filter: blur(25px); }
 .slash-menu[hidden] { display: none; }
 .slash-menu button { width: 100%; display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 9px; padding: 7px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }

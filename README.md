@@ -37,7 +37,8 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 - List and card views
 - Focus mode for uninterrupted writing
 - Rich writing with headings, lists, checklists, quotes, code blocks, links, and attachments
-- Slash commands and a compact formatting toolbar
+- A structured writing editor with bold, italic, underline, strikethrough, headings, numbered and bulleted lists, checklists, quotes, code blocks, links, attachments, and clear formatting
+- Familiar keyboard shortcuts, Markdown input shortcuts, active formatting states, and dependable document undo history
 - Native browser undo and redo
 - Automatic local saving in normalized IndexedDB records with no account or server
 - Visible recovery guidance if durable browser storage fails or fills up
@@ -88,6 +89,6 @@ The account interface activates only in a configured cloud build. See [account d
 
 ## Technical shape
 
-Jotfield uses semantic HTML, modern CSS, JavaScript modules, WebGL, IndexedDB, Supabase, a service worker, and a reusable SVG icon system.
+Jotfield uses semantic HTML, modern CSS, JavaScript modules, ProseMirror, WebGL, IndexedDB, Supabase, a service worker, and a reusable SVG icon system. The editor stores portable semantic HTML alongside searchable plain text. Existing notes are parsed into the structured document model when opened, so the upgrade does not require a destructive content migration.
 
 Built by Anwar Creative Studio.

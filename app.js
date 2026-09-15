@@ -5,6 +5,7 @@ import { createEncryptedSync } from './src/cloud/sync.js';
 import { createLiveShare, liveShareUrl, readLiveShare, readLiveShareFragment, revokeLiveShare, updateLiveShare } from './src/cloud/shares.js';
 import { transitionView } from './src/motion.js';
 import { createEncryptedBackup, MAX_BACKUP_SIZE, openEncryptedBackup } from './src/backup.js';
+import { deleteSlashTrigger, editorHTML, editorText, focusEditor, initializeEditor, insertAttachmentNode, insertChecklist as insertEditorChecklist, loadEditorDocument, runEditorAction } from './src/editor.js';
 
 const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
@@ -885,13 +886,13 @@ function plainTextToHTML(value) {
 }
 
 function editorPlainText() {
-  return $('#body-input').innerText.replace(/\n{3,}/g, '\n\n').trimEnd();
+  return editorText().replace(/\n{3,}/g, '\n\n').trimEnd();
 }
 
 function saveRichEditor() {
   const note = currentNote();
   if (!note) return;
-  note.html = $('#body-input').innerHTML;
+  note.html = editorHTML();
   note.body = editorPlainText();
   note.updated = now();
   persist();
@@ -1050,7 +1051,7 @@ function renderEditor() {
   $('#editor-path').append(first, divider, second);
   $('#note-date').textContent = new Date(note.created).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   if ($('#title-input') !== document.activeElement) $('#title-input').value = note.title;
-  if ($('#body-input') !== document.activeElement) $('#body-input').innerHTML = note.html || plainTextToHTML(note.body);
+  loadEditorDocument(note.id, note.html || plainTextToHTML(note.body));
   $('#favorite-button').classList.toggle('active', note.favorite);
   $('#favorite-button').querySelector('svg').style.fill = note.favorite ? 'rgba(255,92,53,.18)' : '';
   renderInlineTags(note);
@@ -1269,7 +1270,7 @@ function selectNote(id, focus = false) {
     render();
     $('#editor').classList.add('mobile-open');
   }).then(() => {
-    if (focus) requestAnimationFrame(() => ($('#title-input').value ? $('#body-input') : $('#title-input')).focus());
+    if (focus) requestAnimationFrame(() => ($('#title-input').value ? focusEditor() : $('#title-input').focus()));
   });
 }
 
@@ -1321,24 +1322,19 @@ function updateSelected(field, value) {
 }
 
 function runEditorCommand(command, value = null) {
-  $('#body-input').focus();
-  document.execCommand(command, false, value);
-  saveRichEditor();
+  const aliases = { insertUnorderedList: 'bullet', formatBlock: value, createLink: 'link', undo: 'undo', redo: 'redo' };
+  runEditorAction(aliases[command] || command, command === 'createLink' ? value : null);
 }
 
 function insertChecklist() {
-  $('#body-input').focus();
-  document.execCommand('insertHTML', false, '<ul class="task-list"><li data-checked="false"><button type="button" class="task-check" contenteditable="false" aria-label="Mark task complete"></button><span>New task</span></li></ul><p><br></p>');
-  saveRichEditor();
+  insertEditorChecklist();
 }
 
 function insertLink() {
   const address = window.prompt('Paste a web address');
   if (!address) return;
   const safeAddress = /^https?:\/\//i.test(address) ? address : `https://${address}`;
-  const selection = getSelection();
-  if (selection?.toString()) runEditorCommand('createLink', safeAddress);
-  else runEditorCommand('insertHTML', `<a href="${escapeHTML(safeAddress)}" target="_blank" rel="noopener">${escapeHTML(address)}</a>`);
+  runEditorAction('link', safeAddress);
 }
 
 function insertAttachment(file) {
@@ -1349,11 +1345,7 @@ function insertAttachment(file) {
   }
   const reader = new FileReader();
   reader.addEventListener('load', () => {
-    const safeName = escapeHTML(file.name);
-    const markup = file.type.startsWith('image/')
-      ? `<figure class="attachment"><img src="${reader.result}" alt="${safeName}"><figcaption>${safeName}</figcaption></figure><p><br></p>`
-      : `<p class="file-attachment"><a href="${reader.result}" download="${safeName}">${icon('attach')}<span>${safeName}</span></a></p><p><br></p>`;
-    runEditorCommand('insertHTML', markup);
+    insertAttachmentNode(file, reader.result);
     toast('Attachment added');
   });
   reader.readAsDataURL(file);
@@ -1372,7 +1364,7 @@ function closeSlashMenu() {
 }
 
 function applySlashAction(action) {
-  document.execCommand('delete', false);
+  deleteSlashTrigger();
   if (action === 'h2') runEditorCommand('formatBlock', 'h2');
   if (action === 'ul') runEditorCommand('insertUnorderedList');
   if (action === 'check') insertChecklist();
@@ -1648,7 +1640,6 @@ $('#day-strip').addEventListener('click', (event) => {
   if (button) openDaily(button.dataset.day);
 });
 $('#title-input').addEventListener('input', (event) => updateSelected('title', event.target.value));
-$('#body-input').addEventListener('input', saveRichEditor);
 $('#body-input').addEventListener('keydown', (event) => {
   if (event.key === '/' && !event.metaKey && !event.ctrlKey) requestAnimationFrame(showSlashMenu);
   if (event.key === 'Escape') closeSlashMenu();
@@ -1657,40 +1648,15 @@ $('#body-input').addEventListener('keydown', (event) => {
     applySlashAction($('#slash-menu button').dataset.slash);
   }
 });
-$('#body-input').addEventListener('paste', (event) => {
-  const html = event.clipboardData?.getData('text/html');
-  if (!html) return;
-  event.preventDefault();
-  const pasted = new DOMParser().parseFromString(html, 'text/html');
-  pasted.querySelectorAll('script,style,iframe,object,embed,form').forEach((element) => element.remove());
-  pasted.querySelectorAll('*').forEach((element) => {
-    [...element.attributes].forEach((attribute) => {
-      if (attribute.name.startsWith('on') || attribute.name === 'style') element.removeAttribute(attribute.name);
-    });
-    const href = element.getAttribute('href');
-    if (href && !/^(https?:|mailto:|#)/i.test(href)) element.removeAttribute('href');
-    const src = element.getAttribute('src');
-    if (src && !/^(https?:|data:image\/)/i.test(src)) element.removeAttribute('src');
-  });
-  document.execCommand('insertHTML', false, pasted.body.innerHTML);
-});
 $('.format-toolbar').addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button) return;
   if (button.dataset.editorCommand) runEditorCommand(button.dataset.editorCommand);
   if (button.dataset.blockCommand) runEditorCommand('formatBlock', button.dataset.blockCommand);
+  if (button.dataset.format) runEditorAction(button.dataset.format);
   if (button.hasAttribute('data-insert-checklist')) insertChecklist();
   if (button.hasAttribute('data-insert-link')) insertLink();
   if (button.hasAttribute('data-attach')) $('#attachment-input').click();
-});
-$('#body-input').addEventListener('click', (event) => {
-  const checkbox = event.target.closest('.task-check');
-  if (!checkbox) return;
-  const item = checkbox.closest('li');
-  const checked = item.dataset.checked === 'true';
-  item.dataset.checked = String(!checked);
-  checkbox.setAttribute('aria-label', checked ? 'Mark task complete' : 'Mark task incomplete');
-  saveRichEditor();
 });
 $('#attachment-input').addEventListener('change', (event) => {
   insertAttachment(event.target.files?.[0]);
@@ -2348,6 +2314,7 @@ function startLightField() {
 }
 
 startLightField();
+initializeEditor($('#body-input'), { onChange: saveRichEditor, toolbar: $('.format-toolbar') });
 render();
 setAccountMode('signin');
 cloudSync = createEncryptedSync({
