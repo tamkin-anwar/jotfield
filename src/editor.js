@@ -8,7 +8,18 @@ import { history, redo, undo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
 import { inputRules, textblockTypeInputRule, wrappingInputRule } from 'prosemirror-inputrules';
 
-const nodes = addListNodes(basicSchema.spec.nodes, 'paragraph block*', 'block').append({
+let baseNodes = addListNodes(basicSchema.spec.nodes, 'paragraph block*', 'block');
+baseNodes = baseNodes.update('paragraph', {
+  ...baseNodes.get('paragraph'), attrs: { align: { default: null } },
+  parseDOM: [{ tag: 'p', getAttrs: (dom) => ({ align: dom.style.textAlign || null }) }],
+  toDOM: (node) => ['p', node.attrs.align ? { style: `text-align:${node.attrs.align}` } : {}, 0],
+});
+baseNodes = baseNodes.update('heading', {
+  ...baseNodes.get('heading'), attrs: { level: { default: 1 }, align: { default: null } },
+  parseDOM: [1, 2, 3, 4, 5, 6].map((level) => ({ tag: `h${level}`, attrs: { level }, getAttrs: (dom) => ({ level, align: dom.style.textAlign || null }) })),
+  toDOM: (node) => [`h${node.attrs.level}`, node.attrs.align ? { style: `text-align:${node.attrs.align}` } : {}, 0],
+});
+const nodes = baseNodes.append({
   task_list: {
     group: 'block', content: 'task_item+',
     parseDOM: [{ tag: 'ul.task-list', priority: 60 }],
@@ -46,6 +57,10 @@ const marks = basicSchema.spec.marks.append({
     parseDOM: [{ tag: 's' }, { tag: 'strike' }, { style: 'text-decoration', getAttrs: (value) => String(value).includes('line-through') && null }],
     toDOM: () => ['s', 0],
   },
+  highlight: {
+    parseDOM: [{ tag: 'mark' }, { style: 'background-color', getAttrs: (value) => value !== 'transparent' && null }],
+    toDOM: () => ['mark', 0],
+  },
 });
 
 export const editorSchema = new Schema({ nodes, marks });
@@ -79,6 +94,7 @@ function plugins() {
       'Mod-i': toggleMark(editorSchema.marks.em),
       'Mod-u': toggleMark(editorSchema.marks.underline),
       'Mod-Shift-x': toggleMark(editorSchema.marks.strike),
+      'Mod-Shift-h': toggleMark(editorSchema.marks.highlight),
       'Mod-z': undo,
       'Shift-Mod-z': redo,
       'Mod-y': redo,
@@ -107,8 +123,11 @@ function updateToolbar() {
   if (!view || !toolbar) return;
   const active = {
     bold: markActive(editorSchema.marks.strong), italic: markActive(editorSchema.marks.em),
-    underline: markActive(editorSchema.marks.underline), strike: markActive(editorSchema.marks.strike),
-    h2: nodeActive(editorSchema.nodes.heading), bullet: nodeActive(editorSchema.nodes.bullet_list),
+    underline: markActive(editorSchema.marks.underline), strike: markActive(editorSchema.marks.strike), highlight: markActive(editorSchema.marks.highlight),
+    h1: view.state.selection.$from.parent.type === editorSchema.nodes.heading && view.state.selection.$from.parent.attrs.level === 1,
+    h2: view.state.selection.$from.parent.type === editorSchema.nodes.heading && view.state.selection.$from.parent.attrs.level === 2,
+    h3: view.state.selection.$from.parent.type === editorSchema.nodes.heading && view.state.selection.$from.parent.attrs.level === 3,
+    bullet: nodeActive(editorSchema.nodes.bullet_list),
     ordered: nodeActive(editorSchema.nodes.ordered_list), checklist: nodeActive(editorSchema.nodes.task_list),
     blockquote: nodeActive(editorSchema.nodes.blockquote), code: nodeActive(editorSchema.nodes.code_block),
   };
@@ -182,17 +201,40 @@ function toggleList(type) {
 }
 
 export function runEditorAction(action, value = null) {
+  const setAlignment = (align) => {
+    const { from, to } = view.state.selection;
+    let transaction = view.state.tr;
+    view.state.doc.nodesBetween(from, to, (node, position) => {
+      if (node.type === editorSchema.nodes.paragraph || node.type === editorSchema.nodes.heading) transaction = transaction.setNodeMarkup(position, undefined, { ...node.attrs, align: align === 'left' ? null : align });
+    });
+    if (view.state.selection.$from.parent.type === editorSchema.nodes.paragraph || view.state.selection.$from.parent.type === editorSchema.nodes.heading) {
+      const position = view.state.selection.$from.before();
+      transaction = transaction.setNodeMarkup(position, undefined, { ...view.state.selection.$from.parent.attrs, align: align === 'left' ? null : align });
+    }
+    if (!transaction.docChanged) return false;
+    view.dispatch(transaction.scrollIntoView()); view.focus(); return true;
+  };
   const actions = {
     bold: () => run(toggleMark(editorSchema.marks.strong)),
     italic: () => run(toggleMark(editorSchema.marks.em)),
     underline: () => run(toggleMark(editorSchema.marks.underline)),
     strike: () => run(toggleMark(editorSchema.marks.strike)),
+    highlight: () => run(toggleMark(editorSchema.marks.highlight)),
+    h1: () => run(setBlockType(editorSchema.nodes.heading, { level: 1 })),
     h2: () => run(setBlockType(editorSchema.nodes.heading, { level: 2 })),
+    h3: () => run(setBlockType(editorSchema.nodes.heading, { level: 3 })),
     paragraph: () => run(setBlockType(editorSchema.nodes.paragraph)),
     bullet: () => toggleList(editorSchema.nodes.bullet_list),
     ordered: () => toggleList(editorSchema.nodes.ordered_list),
     blockquote: () => nodeActive(editorSchema.nodes.blockquote) ? run(lift) : run(wrapIn(editorSchema.nodes.blockquote)),
     code: () => run(setBlockType(editorSchema.nodes.code_block)),
+    left: () => setAlignment('left'), center: () => setAlignment('center'), right: () => setAlignment('right'),
+    indent: () => run(sinkListItem(editorSchema.nodes.list_item)),
+    outdent: () => run(liftListItem(editorSchema.nodes.list_item)),
+    divider: () => {
+      const divider = editorSchema.nodes.horizontal_rule.create();
+      view.dispatch(view.state.tr.replaceSelectionWith(divider).scrollIntoView()); view.focus(); return true;
+    },
     undo: () => run(undo), redo: () => run(redo),
     clear: () => {
       const { from, to } = view.state.selection;
@@ -207,6 +249,7 @@ export function runEditorAction(action, value = null) {
       view.dispatch(view.state.tr.insertText(value, from, to).addMark(from, from + value.length, mark));
       view.focus(); return true;
     },
+    unlink: () => run(toggleMark(editorSchema.marks.link)),
   };
   return actions[action]?.() || false;
 }

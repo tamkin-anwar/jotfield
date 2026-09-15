@@ -24,7 +24,11 @@
   "icons": [
     { "src": "./jotfield-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "./jotfield-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./jotfield-icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
     { "src": "./jotfield-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "./jotfield-icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "maskable" }
+    { "src": "./jotfield-icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },
+    { "src": "./jotfield-icon-4096.png", "sizes": "4096x4096", "type": "image/png", "purpose": "any" },
+    { "src": "./jotfield-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "./jotfield-icon-maskable-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "maskable" }
   ]
 }

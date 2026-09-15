@@ -11,9 +11,9 @@
       content="Jotfield is a private, local-first notebook for capturing ideas and finding their connections."
     />
     <title>Jotfield | A place for every thought</title>
-    <link rel="icon" type="image/svg+xml" sizes="any" href="./jotfield-icon.svg?v=4" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="./jotfield-icon.svg?v=5" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=2" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=5" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -176,16 +176,26 @@
                 <button type="button" data-format="italic" aria-label="Italic" title="Italic (⌘I)"><svg><use href="#i-italic"/></svg></button>
                 <button type="button" data-format="underline" aria-label="Underline" title="Underline (⌘U)"><u>U</u></button>
                 <button type="button" data-format="strike" aria-label="Strikethrough" title="Strikethrough (⌘⇧X)"><s>S</s></button>
+                <button type="button" data-format="highlight" aria-label="Highlight" title="Highlight (⌘⇧H)"><mark>A</mark></button>
                 <span></span>
                 <button type="button" data-format="paragraph" aria-label="Paragraph" title="Paragraph">¶</button>
-                <button type="button" data-format="h2" aria-label="Heading" title="Heading">H</button>
+                <button type="button" data-format="h1" aria-label="Heading 1" title="Heading 1">H1</button>
+                <button type="button" data-format="h2" aria-label="Heading 2" title="Heading 2">H2</button>
+                <button type="button" data-format="h3" aria-label="Heading 3" title="Heading 3">H3</button>
                 <button type="button" data-format="bullet" aria-label="Bulleted list" title="Bulleted list"><svg><use href="#i-list-bullet"/></svg></button>
                 <button type="button" data-format="ordered" aria-label="Numbered list" title="Numbered list"><span class="ordered-mark">1.</span></button>
                 <button type="button" data-insert-checklist data-format="checklist" aria-label="Checklist" title="Checklist"><svg><use href="#i-check"/></svg></button>
                 <button type="button" data-format="blockquote" aria-label="Quote" title="Quote"><svg><use href="#i-quote"/></svg></button>
                 <button type="button" data-format="code" aria-label="Code block" title="Code block"><span class="code-mark">&lt;/&gt;</span></button>
+                <button type="button" data-format="divider" aria-label="Horizontal divider" title="Horizontal divider">―</button>
                 <span></span>
+                <button type="button" data-format="left" aria-label="Align left" title="Align left">≡</button>
+                <button type="button" data-format="center" aria-label="Align center" title="Align center">≣</button>
+                <button type="button" data-format="right" aria-label="Align right" title="Align right">≡</button>
+                <button type="button" data-format="outdent" aria-label="Outdent" title="Outdent">‹</button>
+                <button type="button" data-format="indent" aria-label="Indent" title="Indent">›</button>
                 <button type="button" data-insert-link aria-label="Add link" title="Add link"><svg><use href="#i-link"/></svg></button>
+                <button type="button" data-format="unlink" aria-label="Remove link" title="Remove link"><span class="unlink-mark">×</span></button>
                 <button type="button" data-attach aria-label="Attach file" title="Attach file"><svg><use href="#i-attach"/></svg></button>
                 <button type="button" data-format="clear" aria-label="Clear formatting" title="Clear formatting"><span class="clear-mark">Tx</span></button>
                 <span class="toolbar-spacer"></span>
@@ -195,7 +205,7 @@
               <div class="body-input" id="body-input"></div>
             </div>
             <div class="statusbar">
-              <span id="word-count">0 words</span><span>Markdown shortcuts</span><span id="edited-time">Edited now</span>
+              <span id="word-count">0 words</span><span id="character-count">0 characters</span><span id="reading-time">0 min read</span><span id="edited-time">Edited now</span>
             </div>
           </article>
         </main>
@@ -388,11 +398,15 @@
     <input type="file" id="vault-input" accept="application/jotfield-vault,.jotvault" hidden />
     <input type="file" id="note-files-input" accept=".md,.markdown,.txt,.html,.htm,text/markdown,text/plain,text/html" multiple hidden />
     <div class="slash-menu" id="slash-menu" hidden role="listbox" aria-label="Insert block">
-      <button type="button" data-slash="h2"><b>H</b><span><strong>Heading</strong><small>Large section title</small></span></button>
+      <button type="button" data-slash="h1"><b>H1</b><span><strong>Heading 1</strong><small>Page-level section title</small></span></button>
+      <button type="button" data-slash="h2"><b>H2</b><span><strong>Heading 2</strong><small>Large section title</small></span></button>
+      <button type="button" data-slash="h3"><b>H3</b><span><strong>Heading 3</strong><small>Smaller section title</small></span></button>
       <button type="button" data-slash="ul"><b>•</b><span><strong>Bullet list</strong><small>Start an unordered list</small></span></button>
+      <button type="button" data-slash="ol"><b>1.</b><span><strong>Numbered list</strong><small>Start an ordered list</small></span></button>
       <button type="button" data-slash="check"><b>✓</b><span><strong>Checklist</strong><small>Track something to finish</small></span></button>
       <button type="button" data-slash="quote"><b>“</b><span><strong>Quote</strong><small>Set a passage apart</small></span></button>
       <button type="button" data-slash="code"><b>&lt;/&gt;</b><span><strong>Code</strong><small>Preserve spacing and syntax</small></span></button>
+      <button type="button" data-slash="divider"><b>―</b><span><strong>Divider</strong><small>Separate sections visually</small></span></button>
     </div>
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
     <div class="control-tooltip" id="control-tooltip" role="tooltip" hidden></div>

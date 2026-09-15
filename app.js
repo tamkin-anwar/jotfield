@@ -1262,6 +1262,9 @@ function scheduleReminderCheck() {
 function updateWordCount(note) {
   const words = note.body.trim() ? note.body.trim().split(/\s+/).length : 0;
   $('#word-count').textContent = `${words} ${words === 1 ? 'word' : 'words'}`;
+  const characters = note.body.length;
+  $('#character-count').textContent = `${characters} ${characters === 1 ? 'character' : 'characters'}`;
+  $('#reading-time').textContent = `${words ? Math.max(1, Math.ceil(words / 220)) : 0} min read`;
 }
 
 function selectNote(id, focus = false) {
@@ -1365,11 +1368,15 @@ function closeSlashMenu() {
 
 function applySlashAction(action) {
   deleteSlashTrigger();
+  if (action === 'h1') runEditorAction('h1');
   if (action === 'h2') runEditorCommand('formatBlock', 'h2');
+  if (action === 'h3') runEditorAction('h3');
   if (action === 'ul') runEditorCommand('insertUnorderedList');
+  if (action === 'ol') runEditorAction('ordered');
   if (action === 'check') insertChecklist();
   if (action === 'quote') runEditorCommand('formatBlock', 'blockquote');
   if (action === 'code') runEditorCommand('formatBlock', 'pre');
+  if (action === 'divider') runEditorAction('divider');
   closeSlashMenu();
 }
 
