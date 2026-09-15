@@ -96,6 +96,8 @@ svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width:
 .save-state { display: flex; align-items: center; gap: 7px; margin-right: 8px; color: #7f8a9b; font-size: 12px; }
 .save-state i { width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px rgba(119, 214, 173, 0.6); }
 .save-state.saving i { background: var(--amber); }
+.save-state.save-error { color: #b43a2f; }
+.save-state.save-error i { background: #d84b3d; box-shadow: 0 0 8px rgba(216, 75, 61, 0.5); }
 .save-state.cloud-syncing i { background: var(--blue); box-shadow: 0 0 0 4px rgba(49,92,245,.1); }
 .save-state.cloud-synced i { background: var(--green); }
 .round-button, .editor-actions button {

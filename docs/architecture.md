@@ -4,7 +4,9 @@ Jotfield remains a local-first notebook. Opening the app, writing, searching, ex
 
 ## Application boundary
 
-The browser owns the working copy in IndexedDB. Cloud synchronization is an optional layer that observes committed local changes and exchanges encrypted operations. The interface does not wait for the network before confirming an edit.
+The browser owns the working copy in IndexedDB. Notes, spaces, tasks, revisions, and notebook metadata use separate records so a small edit does not clone and rewrite the complete notebook. Version 3 migrates the earlier whole-notebook record automatically and retains the browser backup while the new records are established. Storage failures remain visible in the save indicator and direct the owner to download an encrypted backup.
+
+Cloud synchronization is an optional layer that observes committed local changes and exchanges encrypted operations. The interface does not wait for the network before confirming an edit.
 
 The production build uses Vite so dependencies, environment configuration, source maps, and deployment output are deterministic. Cloud configuration is read from build-time public environment values. A Supabase service-role key must never appear in this repository or in browser code.
 

@@ -10,8 +10,9 @@ const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
 const THEME_KEY = 'jotfield-appearance';
 const DB_NAME = 'jotfield-library';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const REVISION_LIMIT = 100;
+const DURABLE_STORES = ['notes', 'spaces', 'tasks'];
 const SPACE_COLORS = ['#7aa7ff', '#b295ff', '#70dded', '#77d6ad', '#f1bd70', '#ff8b93'];
 
 const $ = (selector) => document.querySelector(selector);
@@ -82,6 +83,10 @@ let currentSmart = null;
 let selectedId = state.notes.find((note) => note.id === 'welcome')?.id || state.notes[0]?.id || null;
 let layout = 'list';
 let saveTimer;
+let saveQueue = Promise.resolve();
+let saveGeneration = 0;
+let saveFailureNotified = false;
+const durableSignatures = new Map(DURABLE_STORES.map((store) => [store, new Map()]));
 let commandIndex = 0;
 let commandItems = [];
 let searchScope = 'all';
@@ -225,6 +230,10 @@ function openDatabase() {
         revisions.createIndex('noteId', 'noteId');
       }
       if (!database.objectStoreNames.contains('secrets')) database.createObjectStore('secrets');
+      if (!database.objectStoreNames.contains('notes')) database.createObjectStore('notes', { keyPath: 'id' });
+      if (!database.objectStoreNames.contains('spaces')) database.createObjectStore('spaces', { keyPath: 'id' });
+      if (!database.objectStoreNames.contains('tasks')) database.createObjectStore('tasks', { keyPath: 'id' });
+      if (!database.objectStoreNames.contains('metadata')) database.createObjectStore('metadata', { keyPath: 'key' });
     });
     request.addEventListener('success', () => resolve(request.result));
     request.addEventListener('error', () => reject(request.error));
@@ -239,21 +248,89 @@ function databaseRequest(request) {
   });
 }
 
+function transactionDone(transaction) {
+  return new Promise((resolve, reject) => {
+    transaction.addEventListener('complete', () => resolve());
+    transaction.addEventListener('abort', () => reject(transaction.error || new Error('Storage transaction was interrupted')));
+    transaction.addEventListener('error', () => reject(transaction.error || new Error('Storage transaction failed')));
+  });
+}
+
+const recordSignature = (record) => JSON.stringify(record);
+
+function rememberDurableState(snapshot) {
+  DURABLE_STORES.forEach((store) => {
+    durableSignatures.set(store, new Map((snapshot[store] || []).map((record) => [record.id, recordSignature(record)])));
+  });
+}
+
+function syncDurableStore(transaction, storeName, records) {
+  const store = transaction.objectStore(storeName);
+  const previous = durableSignatures.get(storeName);
+  const next = new Map();
+  records.forEach((record) => {
+    const signature = recordSignature(record);
+    next.set(record.id, signature);
+    if (previous.get(record.id) !== signature) store.put(record);
+  });
+  previous.forEach((_signature, id) => {
+    if (!next.has(id)) store.delete(id);
+  });
+  return next;
+}
+
 async function writeDurably(snapshot, revision) {
   const database = await openDatabase();
-  const transaction = database.transaction(['notebook', 'revisions'], 'readwrite');
-  transaction.objectStore('notebook').put(snapshot, 'current');
+  const transaction = database.transaction([...DURABLE_STORES, 'metadata', 'revisions'], 'readwrite');
+  const completed = transactionDone(transaction);
+  const nextSignatures = new Map(DURABLE_STORES.map((store) => [store, syncDurableStore(transaction, store, snapshot[store] || [])]));
+  transaction.objectStore('metadata').put({ key: 'notebook', modifiedAt: snapshot.modifiedAt || now(), schemaVersion: DB_VERSION });
   if (revision) transaction.objectStore('revisions').put(revision);
   const revisions = transaction.objectStore('revisions');
-  const keys = await databaseRequest(revisions.index('created').getAllKeys());
-  keys.slice(0, Math.max(0, keys.length - REVISION_LIMIT)).forEach((key) => revisions.delete(key));
+  const revisionKeys = revisions.index('created').getAllKeys();
+  revisionKeys.addEventListener('success', () => {
+    revisionKeys.result.slice(0, Math.max(0, revisionKeys.result.length - REVISION_LIMIT)).forEach((key) => revisions.delete(key));
+  });
+  await completed;
+  nextSignatures.forEach((signatures, store) => durableSignatures.set(store, signatures));
+}
+
+function enqueueDurableWrite(snapshot, revision) {
+  saveQueue = saveQueue.catch(() => {}).then(() => writeDurably(snapshot, revision));
+  return saveQueue;
+}
+
+async function readNormalizedState(database) {
+  const transaction = database.transaction([...DURABLE_STORES, 'metadata'], 'readonly');
+  const completed = transactionDone(transaction);
+  const [notes, spaces, tasks, metadata] = await Promise.all([
+    databaseRequest(transaction.objectStore('notes').getAll()),
+    databaseRequest(transaction.objectStore('spaces').getAll()),
+    databaseRequest(transaction.objectStore('tasks').getAll()),
+    databaseRequest(transaction.objectStore('metadata').get('notebook')),
+  ]);
+  await completed;
+  if (!metadata || !Array.isArray(notes) || !Array.isArray(spaces)) return null;
+  return { notes, spaces, tasks, modifiedAt: metadata.modifiedAt };
+}
+
+async function readLegacyDurableState(database) {
+  const transaction = database.transaction('notebook', 'readonly');
+  const completed = transactionDone(transaction);
+  const durable = await databaseRequest(transaction.objectStore('notebook').get('current'));
+  await completed;
+  return durable;
 }
 
 async function hydrateDurableState() {
   try {
     const database = await openDatabase();
-    const transaction = database.transaction('notebook', 'readonly');
-    const durable = await databaseRequest(transaction.objectStore('notebook').get('current'));
+    let durable = await readNormalizedState(database);
+    let migrated = false;
+    if (!durable) {
+      durable = await readLegacyDurableState(database);
+      migrated = Boolean(durable?.notes && durable?.spaces);
+    }
     if (durable?.notes && durable?.spaces) {
       durable.tasks = Array.isArray(durable.tasks) ? durable.tasks : [];
       const durableTime = new Date(durable.modifiedAt || 0).getTime();
@@ -264,29 +341,61 @@ async function hydrateDurableState() {
         render();
         toast('Notebook recovered');
       }
+      if (migrated) {
+        await enqueueDurableWrite(structuredClone(durable));
+        toast('Notebook storage upgraded');
+      } else {
+        rememberDurableState(durable);
+        if (currentTime > durableTime) await enqueueDurableWrite(structuredClone(state));
+      }
     } else {
-      await writeDurably(structuredClone(state));
+      await enqueueDurableWrite(structuredClone(state));
     }
-  } catch {
-    toast('Using browser backup storage');
+  } catch (error) {
+    showSaveFailure(error, true);
+  }
+}
+
+function showSaveFailure(error, duringOpen = false) {
+  const saveState = $('#save-state');
+  saveState.classList.remove('saving');
+  saveState.classList.add('save-error');
+  const quota = error?.name === 'QuotaExceededError';
+  saveState.lastChild.textContent = quota ? ' Storage full' : ' Save needs attention';
+  if (!saveFailureNotified) {
+    toast(quota ? 'Storage is full. Download a backup before continuing.' : duringOpen ? 'Local storage could not be opened. Download a backup to protect your notes.' : 'Changes could not be saved. Download a backup before closing Jotfield.');
+    saveFailureNotified = true;
   }
 }
 
 function persist() {
-  $('#save-state').classList.add('saving');
-  $('#save-state').lastChild.textContent = ' Saving';
+  const saveState = $('#save-state');
+  saveState.classList.remove('save-error');
+  saveState.removeAttribute('title');
+  saveState.classList.add('saving');
+  saveState.lastChild.textContent = ' Saving';
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
+    const generation = ++saveGeneration;
     state.modifiedAt = now();
     const snapshot = structuredClone(state);
     const note = currentNote();
     const revision = note ? { id: `${Date.now()}-${note.id}`, noteId: note.id, created: now(), note: structuredClone(note) } : null;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch {}
-    writeDurably(snapshot, revision).catch(() => {});
+    let browserBackupSaved = true;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch { browserBackupSaved = false; }
     deviceChannel?.postMessage(makeSyncEnvelope('notebook.changed', snapshot));
     cloudSync?.schedule();
-    $('#save-state').classList.remove('saving');
-    $('#save-state').lastChild.textContent = cloudSync?.isUnlocked() ? ' Waiting to sync' : ' Saved locally';
+    enqueueDurableWrite(snapshot, revision).then(() => {
+      saveFailureNotified = false;
+      if (generation !== saveGeneration) return;
+      saveState.classList.remove('saving', 'save-error');
+      saveState.removeAttribute('title');
+      saveState.lastChild.textContent = cloudSync?.isUnlocked() ? ' Waiting to sync' : ' Saved locally';
+    }).catch((error) => {
+      if (generation !== saveGeneration) return;
+      showSaveFailure(error);
+      if (browserBackupSaved) saveState.title = 'A browser backup exists, but durable storage needs attention.';
+    });
   }, 220);
 }
 
@@ -294,7 +403,7 @@ function applyCloudNotebook(notebook) {
   state = notebook;
   selectedId = state.notes.some((note) => note.id === selectedId) ? selectedId : state.notes[0]?.id || null;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
-  writeDurably(structuredClone(state)).catch(() => {});
+  enqueueDurableWrite(structuredClone(state)).catch((error) => showSaveFailure(error));
   render();
 }
 
@@ -320,7 +429,7 @@ deviceChannel?.addEventListener('message', (event) => {
   state = mergeNotebook(state, event.data.payload);
   selectedId = state.notes.some((note) => note.id === selectedId) ? selectedId : state.notes[0]?.id || null;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
-  writeDurably(structuredClone(state)).catch(() => {});
+  enqueueDurableWrite(structuredClone(state)).catch((error) => showSaveFailure(error));
   render();
   toast('Updated from another Jotfield tab');
 });

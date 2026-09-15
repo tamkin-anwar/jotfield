@@ -39,7 +39,8 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 - Rich writing with headings, lists, checklists, quotes, code blocks, links, and attachments
 - Slash commands and a compact formatting toolbar
 - Native browser undo and redo
-- Automatic local saving in IndexedDB with no account or server
+- Automatic local saving in normalized IndexedDB records with no account or server
+- Visible recovery guidance if durable browser storage fails or fills up
 - Revision snapshots and offline launch support
 - Complete JSON backup and restore
 - A GPU-rendered ambient light field with reduced-motion support
