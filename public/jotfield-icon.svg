@@ -1,5 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <rect x="60" y="325" width="480" height="230" rx="115" fill="#356df3" transform="rotate(38 300 440)"/>
-  <rect x="272" y="397" width="480" height="230" rx="115" fill="#ff7043" transform="rotate(38 512 512)"/>
-  <rect x="484" y="469" width="480" height="230" rx="115" fill="#c7e868" transform="rotate(38 724 584)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <path id="lozenge" d="M7.5 0H13.2Q15 0 15 3V12.5Q15 25 7.5 25H1.8Q0 25 0 22V12.5Q0 0 7.5 0Z"/>
+  </defs>
+  <g transform="translate(32 32) scale(1.65) rotate(42) translate(-7.5 -12.5)">
+    <use href="#lozenge" transform="translate(8 -5)" fill="#c9f06a"/>
+    <use href="#lozenge" transform="translate(-7 6)" fill="#315cf5"/>
+    <use href="#lozenge" fill="#ff5c35"/>
+  </g>
 </svg>
