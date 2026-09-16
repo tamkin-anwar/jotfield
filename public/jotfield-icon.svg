@@ -1,15 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <radialGradient id="paper" cx="48%" cy="42%" r="72%"><stop stop-color="#fffaf0"/><stop offset="1" stop-color="#eadcc8"/></radialGradient>
-    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#392316" flood-opacity=".25"/></filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#392316" flood-opacity=".22"/></filter>
     <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4b80ff"/><stop offset="1" stop-color="#285bdc"/></linearGradient>
     <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff8a57"/><stop offset="1" stop-color="#f25a31"/></linearGradient>
     <linearGradient id="lime" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d9f47d"/><stop offset="1" stop-color="#acd94f"/></linearGradient>
   </defs>
-  <rect width="1024" height="1024" fill="url(#paper)"/>
-  <g transform="rotate(38 512 512)" filter="url(#shadow)">
-    <rect x="122" y="310" width="470" height="188" rx="94" fill="url(#blue)"/>
-    <rect x="277" y="418" width="470" height="188" rx="94" fill="url(#orange)"/>
-    <rect x="432" y="526" width="470" height="188" rx="94" fill="url(#lime)"/>
+  <g transform="translate(512 512) scale(1.18) translate(-512 -512)">
+    <g transform="rotate(38 512 512)" filter="url(#shadow)">
+      <rect x="122" y="310" width="470" height="188" rx="94" fill="url(#blue)"/>
+      <rect x="277" y="418" width="470" height="188" rx="94" fill="url(#orange)"/>
+      <rect x="432" y="526" width="470" height="188" rx="94" fill="url(#lime)"/>
+    </g>
   </g>
 </svg>
