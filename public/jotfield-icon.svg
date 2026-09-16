@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs><rect id="lozenge" width="16" height="26" rx="8"/></defs>
-  <g transform="translate(32 32) scale(1.62) rotate(42) translate(-8 -13)">
+  <defs><path id="lozenge" d="M7.5 0H13.2A1.8 3 0 0 1 15 3V12.5A7.5 12.5 0 0 1 7.5 25H1.8A1.8 3 0 0 1 0 22V12.5A7.5 12.5 0 0 1 7.5 0Z"/></defs>
+  <g transform="translate(32 32) scale(1.28) rotate(42) translate(-7.5 -12.5)">
     <use href="#lozenge" transform="translate(8 -5)" fill="#c9f06a"/>
     <use href="#lozenge" transform="translate(-7 6)" fill="#315cf5"/>
     <use href="#lozenge" fill="#ff5c35"/>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jotfield-app-9';
+const CACHE_NAME = 'jotfield-app-10';
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './jotfield-icon.svg', './favicon.ico', './jotfield-icon-192.png', './jotfield-icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
