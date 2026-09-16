@@ -188,6 +188,7 @@
                 <button type="button" data-format="blockquote" aria-label="Quote" title="Quote"><svg><use href="#i-quote"/></svg></button>
                 <button type="button" data-format="code" aria-label="Code block" title="Code block"><span class="code-mark">&lt;/&gt;</span></button>
                 <button type="button" data-format="divider" aria-label="Horizontal divider" title="Horizontal divider">―</button>
+                <button type="button" data-insert-table aria-label="Insert table" title="Insert 3 by 3 table"><span class="table-mark">▦</span></button>
                 <span></span>
                 <button type="button" data-format="left" aria-label="Align left" title="Align left">≡</button>
                 <button type="button" data-format="center" aria-label="Align center" title="Align center">≣</button>
@@ -197,6 +198,8 @@
                 <button type="button" data-insert-link aria-label="Add link" title="Add link"><svg><use href="#i-link"/></svg></button>
                 <button type="button" data-format="unlink" aria-label="Remove link" title="Remove link"><span class="unlink-mark">×</span></button>
                 <button type="button" data-attach aria-label="Attach file" title="Attach file"><svg><use href="#i-attach"/></svg></button>
+                <button type="button" data-find-replace aria-label="Find and replace" title="Find and replace (⌘F)"><svg><use href="#i-search"/></svg></button>
+                <button type="button" data-print-note aria-label="Print or save as PDF" title="Print or save as PDF"><span class="print-mark">P</span></button>
                 <button type="button" data-format="clear" aria-label="Clear formatting" title="Clear formatting"><span class="clear-mark">Tx</span></button>
                 <span class="toolbar-spacer"></span>
                 <button type="button" data-format="undo" aria-label="Undo" title="Undo (⌘Z)"><svg><use href="#i-undo"/></svg></button>
@@ -397,6 +400,34 @@
     <input type="file" id="attachment-input" accept="image/*,.pdf,.txt,.md,.doc,.docx" hidden />
     <input type="file" id="vault-input" accept="application/jotfield-vault,.jotvault" hidden />
     <input type="file" id="note-files-input" accept=".md,.markdown,.txt,.html,.htm,text/markdown,text/plain,text/html" multiple hidden />
+    <div class="selection-toolbar" id="selection-toolbar" hidden role="toolbar" aria-label="Selection formatting">
+      <button type="button" data-format="bold" aria-label="Bold"><b>B</b></button>
+      <button type="button" data-format="italic" aria-label="Italic"><i>I</i></button>
+      <button type="button" data-format="underline" aria-label="Underline"><u>U</u></button>
+      <button type="button" data-format="strike" aria-label="Strikethrough"><s>S</s></button>
+      <button type="button" data-format="highlight" aria-label="Highlight"><mark>A</mark></button>
+      <button type="button" data-context-link aria-label="Edit link"><svg><use href="#i-link"/></svg></button>
+    </div>
+    <div class="image-toolbar" id="image-toolbar" hidden role="toolbar" aria-label="Image layout">
+      <button type="button" data-format="imageSmall">Small</button><button type="button" data-format="imageMedium">Medium</button><button type="button" data-format="imageLarge">Full</button>
+      <span></span><button type="button" data-format="imageLeft">Left</button><button type="button" data-format="imageCenter">Center</button><button type="button" data-format="imageRight">Right</button>
+    </div>
+    <dialog class="find-dialog" id="find-dialog" aria-labelledby="find-title">
+      <form method="dialog" class="find-shell">
+        <header><div><span class="overline">WRITING TOOL</span><h2 id="find-title">Find and replace</h2></div><button value="cancel" aria-label="Close find and replace"><svg><use href="#i-close"/></svg></button></header>
+        <label><span>Find</span><input id="find-input" autocomplete="off" /></label>
+        <label><span>Replace with</span><input id="replace-input" autocomplete="off" /></label>
+        <div class="find-options"><label><input id="find-case" type="checkbox" /> Match case</label><output id="find-count" aria-live="polite">Enter text to search</output></div>
+        <div class="find-actions"><button type="button" id="find-previous">Previous</button><button type="button" id="find-next">Next</button><button type="button" id="replace-one">Replace</button><button class="primary" type="button" id="replace-all">Replace all</button></div>
+      </form>
+    </dialog>
+    <dialog class="table-dialog" id="table-dialog" aria-labelledby="table-title">
+      <form method="dialog" class="table-shell">
+        <header><div><span class="overline">TABLE</span><h2 id="table-title">Table controls</h2></div><button value="cancel" aria-label="Close table controls"><svg><use href="#i-close"/></svg></button></header>
+        <button type="button" class="table-insert" id="insert-table">Insert a 3 by 3 table</button>
+        <div class="table-actions"><button type="button" data-table-action="addRowBefore">Row above</button><button type="button" data-table-action="addRowAfter">Row below</button><button type="button" data-table-action="deleteRow">Delete row</button><button type="button" data-table-action="addColumnBefore">Column left</button><button type="button" data-table-action="addColumnAfter">Column right</button><button type="button" data-table-action="deleteColumn">Delete column</button><button type="button" data-table-action="toggleHeaderRow">Header row</button><button type="button" data-table-action="mergeCells">Merge cells</button><button type="button" data-table-action="splitCell">Split cell</button><button type="button" data-table-action="cellHighlight">Highlight cell</button><button type="button" class="danger" data-table-action="deleteTable">Delete table</button></div>
+      </form>
+    </dialog>
     <div class="slash-menu" id="slash-menu" hidden role="listbox" aria-label="Insert block">
       <button type="button" data-slash="h1"><b>H1</b><span><strong>Heading 1</strong><small>Page-level section title</small></span></button>
       <button type="button" data-slash="h2"><b>H2</b><span><strong>Heading 2</strong><small>Large section title</small></span></button>
@@ -407,6 +438,7 @@
       <button type="button" data-slash="quote"><b>“</b><span><strong>Quote</strong><small>Set a passage apart</small></span></button>
       <button type="button" data-slash="code"><b>&lt;/&gt;</b><span><strong>Code</strong><small>Preserve spacing and syntax</small></span></button>
       <button type="button" data-slash="divider"><b>―</b><span><strong>Divider</strong><small>Separate sections visually</small></span></button>
+      <button type="button" data-slash="table"><b>▦</b><span><strong>Table</strong><small>Insert a 3 by 3 table</small></span></button>
     </div>
     <div class="toast-region" id="toast-region" aria-live="polite"></div>
     <div class="control-tooltip" id="control-tooltip" role="tooltip" hidden></div>

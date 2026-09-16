@@ -1068,3 +1068,93 @@ html[data-theme="dark"] .capture-dialog { border-color: var(--line-bright); back
   .note-paper { padding-inline: 18px; }
   .title-input { font-size: 27px; }
 }
+
+/* Batch 8D writing tools */
+.selection-toolbar,
+.image-toolbar {
+  position: fixed;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 12px;
+  background: rgba(29,25,22,.96);
+  box-shadow: 0 14px 40px rgba(24,18,12,.28);
+  color: #fffaf2;
+  backdrop-filter: blur(18px);
+}
+.selection-toolbar[hidden], .image-toolbar[hidden] { display: none; }
+.selection-toolbar button, .image-toolbar button {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.selection-toolbar button:hover, .selection-toolbar button:focus-visible,
+.image-toolbar button:hover, .image-toolbar button:focus-visible { background: rgba(255,255,255,.12); outline: none; }
+.selection-toolbar svg { width: 15px; height: 15px; }
+.selection-toolbar mark { padding: 1px 3px; border-radius: 3px; background: #f6d778; color: #2a2118; }
+.image-toolbar span { width: 1px; height: 20px; background: rgba(255,255,255,.18); }
+
+.find-dialog, .table-dialog { width: min(540px, calc(100vw - 28px)); padding: 0; border: 1px solid var(--line-bright); border-radius: 20px; background: var(--panel-solid); color: var(--ink); box-shadow: 0 30px 100px rgba(31,22,14,.28); }
+.find-dialog::backdrop, .table-dialog::backdrop { background: rgba(18,14,11,.36); backdrop-filter: blur(9px); }
+.find-shell, .table-shell { display: grid; gap: 16px; padding: 22px; }
+.find-shell header, .table-shell header { display: flex; align-items: center; justify-content: space-between; }
+.find-shell h2, .table-shell h2 { margin: 3px 0 0; font: 600 25px/1.1 var(--serif); }
+.find-shell header button, .table-shell header button { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--ink); }
+.find-shell header svg, .table-shell header svg { width: 15px; height: 15px; }
+.find-shell > label { display: grid; gap: 7px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.find-shell > label input { height: 44px; padding: 0 12px; border: 1px solid var(--line-bright); border-radius: 10px; background: var(--paper); color: var(--ink); font: 500 14px var(--sans); text-transform: none; letter-spacing: 0; }
+.find-options { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12px; }
+.find-options label { display: flex; align-items: center; gap: 7px; }
+.find-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.find-actions button, .table-actions button, .table-insert { min-height: 40px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.3); color: var(--ink); font: 650 11px var(--sans); cursor: pointer; }
+.find-actions .primary, .table-insert { border-color: transparent; background: var(--ink); color: var(--paper); }
+.table-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.table-actions .danger { color: #a73727; }
+
+.ProseMirror table { width: 100%; margin: 24px 0; border-collapse: collapse; table-layout: fixed; overflow: hidden; }
+.ProseMirror th, .ProseMirror td { position: relative; min-width: 72px; padding: 10px 12px; border: 1px solid var(--line-bright); vertical-align: top; }
+.ProseMirror th { background: rgba(207,184,149,.18); font-weight: 750; }
+.ProseMirror .selectedCell:after { position: absolute; inset: 0; z-index: 2; pointer-events: none; content: ''; background: rgba(255,151,74,.16); }
+.ProseMirror figure.attachment { max-width: 100%; transition: width .18s ease, box-shadow .18s ease; }
+.ProseMirror figure.attachment.ProseMirror-selectednode { border-radius: 12px; outline: 3px solid rgba(255,112,67,.28); box-shadow: 0 0 0 1px rgba(255,112,67,.65); }
+.ProseMirror figure.attachment[data-align="left"] { margin-left: 0; margin-right: auto; }
+.ProseMirror figure.attachment[data-align="center"] { margin-left: auto; margin-right: auto; }
+.ProseMirror figure.attachment[data-align="right"] { margin-left: auto; margin-right: 0; }
+.table-mark, .print-mark { font: 700 13px/1 var(--sans); }
+
+@media (max-width: 620px) {
+  .selection-toolbar, .image-toolbar { max-width: calc(100vw - 16px); overflow-x: auto; }
+  .find-shell, .table-shell { padding: 18px; }
+  .find-actions { grid-template-columns: 1fr 1fr; }
+  .table-actions { grid-template-columns: 1fr 1fr; }
+  .ProseMirror table { display: block; max-width: 100%; overflow-x: auto; }
+}
+
+@media print {
+  body { background: #fff !important; }
+  .printing-note #light-field,
+  .printing-note .topbar,
+  .printing-note .sidebar,
+  .printing-note .note-browser,
+  .printing-note .editor-toolbar,
+  .printing-note .format-toolbar,
+  .printing-note .statusbar,
+  .printing-note .mobile-dock,
+  .printing-note .selection-toolbar,
+  .printing-note .image-toolbar { display: none !important; }
+  .printing-note .workspace,
+  .printing-note .editor,
+  .printing-note #editor-document,
+  .printing-note .note-paper { display: block !important; width: 100% !important; max-width: none !important; height: auto !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: #fff !important; color: #17130f !important; box-shadow: none !important; }
+  .printing-note .title-input { color: #17130f !important; font-size: 32pt; }
+  .printing-note .ProseMirror { color: #17130f !important; font-size: 11pt; }
+  .printing-note a { color: #17130f !important; text-decoration: underline; }
+}

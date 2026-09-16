@@ -5,7 +5,7 @@ import { createEncryptedSync } from './src/cloud/sync.js';
 import { createLiveShare, liveShareUrl, readLiveShare, readLiveShareFragment, revokeLiveShare, updateLiveShare } from './src/cloud/shares.js';
 import { transitionView } from './src/motion.js';
 import { createEncryptedBackup, MAX_BACKUP_SIZE, openEncryptedBackup } from './src/backup.js';
-import { deleteSlashTrigger, editorHTML, editorText, focusEditor, initializeEditor, insertAttachmentNode, insertChecklist as insertEditorChecklist, loadEditorDocument, runEditorAction } from './src/editor.js';
+import { deleteSlashTrigger, editorHTML, editorText, findInEditor, focusEditor, initializeEditor, insertAttachmentNode, insertChecklist as insertEditorChecklist, insertTable, loadEditorDocument, replaceAllEditorMatches, replaceEditorMatch, runEditorAction } from './src/editor.js';
 
 const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
@@ -1333,6 +1333,57 @@ function insertChecklist() {
   insertEditorChecklist();
 }
 
+function positionFloatingToolbar(element, context) {
+  if (!context?.rect) { element.hidden = true; return; }
+  const start = context.rect.start;
+  const end = context.rect.end;
+  element.hidden = false;
+  requestAnimationFrame(() => {
+    const width = element.offsetWidth;
+    const x = Math.max(10, Math.min(innerWidth - width - 10, ((start.left + end.right) / 2) - width / 2));
+    const y = Math.max(10, start.top - element.offsetHeight - 10);
+    element.style.left = `${x}px`;
+    element.style.top = `${y}px`;
+  });
+}
+
+function updateSelectionTools(context) {
+  const selectionToolbar = $('#selection-toolbar');
+  const imageToolbar = $('#image-toolbar');
+  if (context?.image) {
+    selectionToolbar.hidden = true;
+    positionFloatingToolbar(imageToolbar, context);
+    return;
+  }
+  imageToolbar.hidden = true;
+  if (context?.empty) { selectionToolbar.hidden = true; return; }
+  positionFloatingToolbar(selectionToolbar, context);
+}
+
+function openFindReplace() {
+  if (!currentNote()) return;
+  $('#find-dialog').showModal();
+  requestAnimationFrame(() => { $('#find-input').focus(); $('#find-input').select(); });
+}
+
+function findOptions(direction = 1) {
+  return { direction, caseSensitive: $('#find-case').checked, focus: false };
+}
+
+function findEditorText(direction = 1) {
+  const query = $('#find-input').value;
+  const result = findInEditor(query, findOptions(direction));
+  $('#find-count').textContent = result.count ? `${result.index + 1} of ${result.count} matches` : query ? 'No matches' : 'Enter text to search';
+  return result;
+}
+
+function printCurrentNote() {
+  if (!currentNote()) return;
+  document.documentElement.classList.add('printing-note');
+  window.print();
+  setTimeout(() => document.documentElement.classList.remove('printing-note'), 500);
+}
+
 function insertLink() {
   const address = window.prompt('Paste a web address');
   if (!address) return;
@@ -1377,6 +1428,7 @@ function applySlashAction(action) {
   if (action === 'quote') runEditorCommand('formatBlock', 'blockquote');
   if (action === 'code') runEditorCommand('formatBlock', 'pre');
   if (action === 'divider') runEditorAction('divider');
+  if (action === 'table') insertTable();
   closeSlashMenu();
 }
 
@@ -1664,7 +1716,46 @@ $('.format-toolbar').addEventListener('click', (event) => {
   if (button.hasAttribute('data-insert-checklist')) insertChecklist();
   if (button.hasAttribute('data-insert-link')) insertLink();
   if (button.hasAttribute('data-attach')) $('#attachment-input').click();
+  if (button.hasAttribute('data-insert-table')) $('#table-dialog').showModal();
+  if (button.hasAttribute('data-find-replace')) openFindReplace();
+  if (button.hasAttribute('data-print-note')) printCurrentNote();
 });
+$('#selection-toolbar').addEventListener('mousedown', (event) => event.preventDefault());
+$('#selection-toolbar').addEventListener('click', (event) => {
+  const button = event.target.closest('button');
+  if (button?.dataset.format) runEditorAction(button.dataset.format);
+  if (button?.hasAttribute('data-context-link')) insertLink();
+});
+$('#image-toolbar').addEventListener('mousedown', (event) => event.preventDefault());
+$('#image-toolbar').addEventListener('click', (event) => {
+  const action = event.target.closest('[data-format]')?.dataset.format;
+  if (action) runEditorAction(action);
+});
+$('#find-input').addEventListener('input', () => findEditorText(1));
+$('#find-case').addEventListener('change', () => findEditorText(1));
+$('#find-next').addEventListener('click', () => findEditorText(1));
+$('#find-previous').addEventListener('click', () => findEditorText(-1));
+$('#replace-one').addEventListener('click', () => {
+  const replaced = replaceEditorMatch($('#find-input').value, $('#replace-input').value, findOptions());
+  if (replaced) toast('Match replaced');
+  findEditorText(1);
+});
+$('#replace-all').addEventListener('click', () => {
+  const count = replaceAllEditorMatches($('#find-input').value, $('#replace-input').value, findOptions());
+  $('#find-count').textContent = count ? `${count} matches replaced` : 'No matches';
+  if (count) toast(`${count} ${count === 1 ? 'match' : 'matches'} replaced`);
+});
+$('#find-dialog').addEventListener('close', focusEditor);
+$('#insert-table').addEventListener('click', () => { insertTable(); $('#table-dialog').close(); toast('Table inserted'); });
+$('#table-dialog').addEventListener('click', (event) => {
+  const action = event.target.closest('[data-table-action]')?.dataset.tableAction;
+  if (!action) return;
+  const changed = runEditorAction(action);
+  if (!changed) toast('Place the cursor inside a table first');
+  if (action === 'deleteTable' && changed) $('#table-dialog').close();
+});
+window.addEventListener('afterprint', () => document.documentElement.classList.remove('printing-note'));
+
 $('#attachment-input').addEventListener('change', (event) => {
   insertAttachment(event.target.files?.[0]);
   event.target.value = '';
@@ -2149,6 +2240,11 @@ window.visualViewport?.addEventListener('scroll', syncMobileViewport);
 window.addEventListener('orientationchange', syncMobileViewport);
 syncMobileViewport();
 window.addEventListener('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f' && currentNote()) {
+    event.preventDefault();
+    openFindReplace();
+    return;
+  }
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
     openCommand();
@@ -2321,7 +2417,7 @@ function startLightField() {
 }
 
 startLightField();
-initializeEditor($('#body-input'), { onChange: saveRichEditor, toolbar: $('.format-toolbar') });
+initializeEditor($('#body-input'), { onChange: saveRichEditor, onSelectionChange: updateSelectionTools, toolbar: $('.format-toolbar') });
 render();
 setAccountMode('signin');
 cloudSync = createEncryptedSync({

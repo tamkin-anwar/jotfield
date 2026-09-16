@@ -39,6 +39,10 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 - Rich writing with headings, lists, checklists, quotes, code blocks, links, and attachments
 - A structured writing editor with bold, italic, underline, strikethrough, headings, numbered and bulleted lists, checklists, quotes, code blocks, links, attachments, and clear formatting
 - Familiar keyboard shortcuts, Markdown input shortcuts, active formatting states, and dependable document undo history
+- Document find and replace with case matching and keyboard access
+- Structured tables with row, column, header, merge, split, highlight, and deletion controls
+- Contextual formatting for selected text and responsive image sizing and alignment
+- Note-only print layouts for paper or browser PDF export
 - Native browser undo and redo
 - Automatic local saving in normalized IndexedDB records with no account or server
 - Visible recovery guidance if durable browser storage fails or fills up

@@ -37,6 +37,8 @@ The note body uses a ProseMirror schema instead of browser editing commands. The
 
 The editor owns undo and redo history, keyboard behavior, paste parsing, and formatting state. This avoids the inconsistent behavior of deprecated browser commands and provides a stable base for future revisions and collaborative editing. Existing note HTML is parsed through the schema whenever a note first opens. Unsupported pasted markup is discarded while supported structure and text remain.
 
+The writing layer also supports schema-native tables through ProseMirror table transactions. Find and replace operates on model positions rather than changing rendered DOM. Selection and image toolbars follow editor transactions and remain outside stored note content. Printing uses a note-only stylesheet, so interface chrome is excluded from paper and PDF output.
+
 ## Private link boundary
 
 Offline snapshot links keep both the encrypted note and its random AES-256-GCM key in the URL fragment. Live links store the ciphertext, nonce, expiration, and owner identity in Supabase. Their random decryption key remains after the `#` in the link, so it is handled by the browser and is not included in the page request.
