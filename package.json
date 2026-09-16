@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1 --port 3000",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
-    "check": "node --check app.js && node --check src/editor.js && node --check src/backup.js && node --check src/cloud/client.js && node --check src/cloud/auth.js && node --check src/cloud/contracts.js && node --check src/cloud/sync.js && node --check src/cloud/shares.js && node --check src/motion.js && node scripts/check-writing.mjs && node scripts/check-cloud-crypto.mjs && node scripts/check-live-shares.mjs && node scripts/check-backup.mjs && node scripts/check-recovery.mjs"
+    "check": "node --check app.js && node --check src/editor.js && node --check src/backup.js && node --check src/cloud/client.js && node --check src/cloud/auth.js && node --check src/cloud/contracts.js && node --check src/cloud/sync.js && node --check src/cloud/merge.js && node --check src/cloud/shares.js && node --check src/motion.js && node scripts/check-writing.mjs && node scripts/check-cloud-crypto.mjs && node scripts/check-live-shares.mjs && node scripts/check-backup.mjs && node scripts/check-recovery.mjs && node scripts/check-sync-reliability.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

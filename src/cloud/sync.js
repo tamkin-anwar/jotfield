@@ -1,7 +1,11 @@
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const SYNC_KEY = 'jotfield-cloud-key';
+const SYNC_BASE_KEY = 'jotfield-cloud-base-v2';
+const SYNC_PENDING_KEY = 'jotfield-cloud-pending-v2';
 const ITERATIONS = 310000;
+const RETRY_DELAYS = [2500, 8000, 30000];
+const WRITE_ATTEMPTS = 3;
 
 function toBase64(bytes) {
   let value = '';
@@ -37,6 +41,8 @@ function readSalt(row) {
   return row ? fromBase64(JSON.parse(row.ciphertext).salt) : crypto.getRandomValues(new Uint8Array(16));
 }
 
+const sameNotebook = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+
 export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook, applyNotebook, setStatus, openDatabase }) {
   let session = null;
   let workspaceId = null;
@@ -44,24 +50,81 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
   let salt = null;
   let timer = null;
   let running = false;
+  let rerunRequested = false;
   let channel = null;
   let retryCount = 0;
   let configured = false;
+  let dirtyGeneration = 0;
+  let scheduleRequest = 0;
   const client = () => clientPromise;
 
-  async function store(mode = 'readonly') {
+  function transactionDone(transaction) {
+    return new Promise((resolve, reject) => {
+      transaction.addEventListener('complete', resolve, { once: true });
+      transaction.addEventListener('abort', () => reject(transaction.error || new Error('Sync storage was interrupted.')), { once: true });
+      transaction.addEventListener('error', () => reject(transaction.error || new Error('Sync storage failed.')), { once: true });
+    });
+  }
+
+  async function readSecret(name) {
     const database = await openDatabase();
-    return database.transaction('secrets', mode).objectStore('secrets');
+    const transaction = database.transaction('secrets', 'readonly');
+    const completed = transactionDone(transaction);
+    const request = transaction.objectStore('secrets').get(name);
+    const value = await new Promise((resolve, reject) => {
+      request.addEventListener('success', () => resolve(request.result || null), { once: true });
+      request.addEventListener('error', () => reject(request.error), { once: true });
+    });
+    await completed;
+    return value;
+  }
+
+  async function writeSecret(name, value) {
+    const database = await openDatabase();
+    const transaction = database.transaction('secrets', 'readwrite');
+    const completed = transactionDone(transaction);
+    transaction.objectStore('secrets').put(value, name);
+    await completed;
+  }
+
+  async function deleteSecret(name) {
+    const database = await openDatabase();
+    const transaction = database.transaction('secrets', 'readwrite');
+    const completed = transactionDone(transaction);
+    transaction.objectStore('secrets').delete(name);
+    await completed;
   }
 
   async function savedKey() {
+    try { return await readSecret(SYNC_KEY); }
+    catch { return null; }
+  }
+
+  async function savedBase() {
     try {
-      const request = (await store()).get(SYNC_KEY);
-      return await new Promise((resolve, reject) => {
-        request.addEventListener('success', () => resolve(request.result || null));
-        request.addEventListener('error', () => reject(request.error));
-      });
+      const saved = await readSecret(SYNC_BASE_KEY);
+      return saved?.workspaceId === workspaceId ? saved.notebook : null;
     } catch { return null; }
+  }
+
+  async function saveBase(notebook) {
+    await writeSecret(SYNC_BASE_KEY, { workspaceId, notebook: structuredClone(notebook), savedAt: new Date().toISOString() });
+  }
+
+  async function markPending() {
+    dirtyGeneration += 1;
+    await persistPending();
+  }
+
+  async function persistPending() {
+    try { await writeSecret(SYNC_PENDING_KEY, { workspaceId, generation: dirtyGeneration, changedAt: new Date().toISOString() }); }
+    catch {}
+  }
+
+  async function clearPending(generation) {
+    if (generation !== dirtyGeneration) return;
+    try { await deleteSecret(SYNC_PENDING_KEY); }
+    catch {}
   }
 
   async function personalWorkspace() {
@@ -78,17 +141,19 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
     return data;
   }
 
-  async function pullAndMerge(row = null) {
-    const remote = row || await cloudRow();
-    if (!remote) return { row: null, notebook: getNotebook() };
-    const merged = mergeNotebook(getNotebook(), await decryptNotebook(remote, key));
-    applyNotebook(merged);
-    return { row: remote, notebook: merged };
+  async function mergeRemote(row = null) {
+    const remoteRow = row || await cloudRow();
+    if (!remoteRow) return { row: null, notebook: getNotebook(), incoming: null };
+    const incoming = await decryptNotebook(remoteRow, key);
+    const merged = mergeNotebook(getNotebook(), incoming, await savedBase());
+    if (!sameNotebook(merged, getNotebook())) applyNotebook(merged);
+    await saveBase(incoming);
+    return { row: remoteRow, notebook: merged, incoming };
   }
 
   function retry() {
     clearTimeout(timer);
-    const delay = [2500, 8000, 30000][Math.min(retryCount, 2)];
+    const delay = RETRY_DELAYS[Math.min(retryCount, RETRY_DELAYS.length - 1)];
     retryCount += 1;
     timer = setTimeout(push, delay);
   }
@@ -101,16 +166,23 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
   }
 
   async function receiveChange(row) {
-    if (!key || running || !row?.ciphertext) return;
+    if (!key || !row?.ciphertext) return;
+    if (running) { rerunRequested = true; return; }
     try {
       const incoming = await decryptNotebook(row, key);
       const local = getNotebook();
-      const merged = mergeNotebook(local, incoming);
-      applyNotebook(merged);
-      setStatus('synced');
-      if (JSON.stringify(merged) !== JSON.stringify(incoming)) schedule();
+      const merged = mergeNotebook(local, incoming, await savedBase());
+      if (!sameNotebook(merged, local)) applyNotebook(merged);
+      await saveBase(incoming);
+      if (!sameNotebook(merged, incoming)) {
+        await markPending();
+        timer = setTimeout(push, 0);
+      } else {
+        setStatus('synced');
+      }
     } catch (error) {
       setStatus('error', error.name === 'OperationError' ? 'This device could not open the newest encrypted copy.' : error.message);
+      retry();
     }
   }
 
@@ -126,28 +198,56 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
       });
   }
 
+  async function writeNotebook(supabase, row, notebook) {
+    const encrypted = await encryptNotebook(notebook, key, salt);
+    const record = {
+      id: workspaceId,
+      workspace_id: workspaceId,
+      author_id: session.user.id,
+      ...encrypted,
+      key_version: 1,
+      content_version: (row?.content_version || 0) + 1,
+      updated_at: new Date().toISOString(),
+    };
+    const query = row
+      ? supabase.from('notes').update(record).eq('id', workspaceId).eq('content_version', row.content_version).select('id, content_version')
+      : supabase.from('notes').insert(record).select('id, content_version');
+    return query;
+  }
+
   async function push() {
-    if (!session || !key || running) return;
+    if (!session || !key) return;
+    if (running) { rerunRequested = true; return; }
     running = true;
+    rerunRequested = false;
+    const generation = dirtyGeneration;
     setStatus('syncing');
     try {
       const supabase = await client();
-      const { row, notebook } = await pullAndMerge();
-      const encrypted = await encryptNotebook(notebook, key, salt);
-      const record = { id: workspaceId, workspace_id: workspaceId, author_id: session.user.id, ...encrypted, key_version: 1, content_version: (row?.content_version || 0) + 1, updated_at: new Date().toISOString() };
-      const query = row
-        ? supabase.from('notes').update(record).eq('id', workspaceId).eq('content_version', row.content_version).select('id')
-        : supabase.from('notes').insert(record).select('id');
-      const { data, error } = await query;
-      if (error) throw error;
-      if (!data?.length) throw new Error('The cloud copy changed. Sync again.');
+      let syncedNotebook = null;
+      for (let attempt = 0; attempt < WRITE_ATTEMPTS; attempt += 1) {
+        const { row, notebook } = await mergeRemote();
+        const { data, error } = await writeNotebook(supabase, row, notebook);
+        if (error && !(error.code === '23505' && attempt < WRITE_ATTEMPTS - 1)) throw error;
+        if (data?.length) { syncedNotebook = notebook; break; }
+      }
+      if (!syncedNotebook) throw new Error('The cloud copy kept changing. Jotfield will try again.');
+      await saveBase(syncedNotebook);
+      await clearPending(generation);
       retryCount = 0;
-      setStatus('synced');
+      setStatus(generation === dirtyGeneration ? 'synced' : 'syncing');
     } catch (error) {
-      setStatus(navigator.onLine ? 'error' : 'offline', navigator.onLine ? error.message : 'Offline. Changes will sync when you reconnect.');
+      await persistPending();
+      const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+      setStatus(offline ? 'offline' : 'error', offline ? 'Offline. Changes will sync when you reconnect.' : error.message);
       retry();
+    } finally {
+      running = false;
+      if (rerunRequested || generation !== dirtyGeneration) {
+        clearTimeout(timer);
+        timer = setTimeout(push, 0);
+      }
     }
-    finally { running = false; }
   }
 
   async function unlock(passphrase) {
@@ -159,8 +259,9 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
       configured = Boolean(row);
       salt = readSalt(row);
       key = await deriveKey(passphrase, salt);
-      if (row) await pullAndMerge(row);
-      (await store('readwrite')).put({ key, salt, userId: session.user.id, workspaceId }, SYNC_KEY);
+      if (row) await mergeRemote(row);
+      await writeSecret(SYNC_KEY, { key, salt, userId: session.user.id, workspaceId });
+      await markPending();
       await push();
       configured = true;
       await startRealtime();
@@ -174,7 +275,14 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
 
   async function start(nextSession) {
     session = nextSession;
-    if (!session) { await stopRealtime(); key = null; workspaceId = null; configured = false; setStatus('off'); return; }
+    if (!session) {
+      await stopRealtime();
+      key = null;
+      workspaceId = null;
+      configured = false;
+      setStatus('off');
+      return;
+    }
     const saved = await savedKey();
     if (!saved || saved.userId !== session.user.id) {
       workspaceId = await personalWorkspace();
@@ -185,33 +293,51 @@ export function createEncryptedSync({ clientPromise, getNotebook, mergeNotebook,
     }
     ({ key, salt, workspaceId } = saved);
     configured = true;
+    const pending = await readSecret(SYNC_PENDING_KEY).catch(() => null);
+    dirtyGeneration = pending?.workspaceId === workspaceId ? Math.max(1, pending.generation || 1) : 0;
     await push();
     await startRealtime();
   }
 
   function schedule() {
     if (!key || !session) return;
+    const request = ++scheduleRequest;
     clearTimeout(timer);
-    timer = setTimeout(push, 900);
+    markPending().finally(() => {
+      if (request !== scheduleRequest) return;
+      timer = setTimeout(push, 900);
+    });
   }
 
   async function lock() {
     clearTimeout(timer);
     await stopRealtime();
-    key = null; salt = null; workspaceId = null;
-    try { (await store('readwrite')).delete(SYNC_KEY); } catch {}
+    key = null;
+    salt = null;
+    workspaceId = null;
+    try { await deleteSecret(SYNC_KEY); } catch {}
     setStatus(session ? (configured ? 'locked' : 'setup') : 'off');
   }
 
   async function refresh() {
-    if (!key || !session || running) return;
-    if (!navigator.onLine) { setStatus('offline'); return; }
+    if (!key || !session) return;
+    if (running) { rerunRequested = true; return; }
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    if (offline) { setStatus('offline'); return; }
     try {
       setStatus('syncing');
-      await pullAndMerge();
+      const { notebook, incoming } = await mergeRemote();
       retryCount = 0;
-      setStatus('synced');
-    } catch (error) { setStatus('error', error.message); retry(); }
+      if (incoming && !sameNotebook(notebook, incoming)) {
+        await markPending();
+        await push();
+      } else {
+        setStatus('synced');
+      }
+    } catch (error) {
+      setStatus('error', error.message);
+      retry();
+    }
   }
 
   return { start, unlock, schedule, push, refresh, lock, isUnlocked: () => Boolean(key), needsSetup: () => !configured };

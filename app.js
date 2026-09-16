@@ -2,6 +2,7 @@ import { createCloudClient, cloudConfiguration } from './src/cloud/client.js';
 import { accountLabel, createAccount, deleteCloudAccount, observeAccount, sendMagicLink, sendPasswordReset, signInWithPassword, signOut, updatePassword } from './src/cloud/auth.js';
 import { makeSyncEnvelope } from './src/cloud/contracts.js';
 import { createEncryptedSync } from './src/cloud/sync.js';
+import { deletionTombstone, mergeNotebookVersions } from './src/cloud/merge.js';
 import { createLiveShare, liveShareUrl, readLiveShare, readLiveShareFragment, revokeLiveShare, updateLiveShare } from './src/cloud/shares.js';
 import { transitionView } from './src/motion.js';
 import { createEncryptedBackup, MAX_BACKUP_SIZE, openEncryptedBackup } from './src/backup.js';
@@ -12,11 +13,11 @@ const LEGACY_STORAGE_KEY = 'facet-notes-v1';
 const THEME_KEY = 'jotfield-appearance';
 const AVATAR_KEY = 'jotfield-avatar-style';
 const DB_NAME = 'jotfield-library';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const REVISION_LIMIT = 250;
 const SNAPSHOT_LIMIT = 12;
 const REVISION_WINDOW = 60 * 1000;
-const DURABLE_STORES = ['notes', 'spaces', 'tasks'];
+const DURABLE_STORES = ['notes', 'spaces', 'tasks', 'tombstones'];
 const SPACE_COLORS = ['#7aa7ff', '#b295ff', '#70dded', '#77d6ad', '#f1bd70', '#ff8b93'];
 
 const $ = (selector) => document.querySelector(selector);
@@ -77,6 +78,7 @@ const starterState = {
     },
   ],
   tasks: [],
+  tombstones: [],
 };
 
 let state = loadState();
@@ -230,7 +232,7 @@ function loadState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
     const parsed = JSON.parse(saved);
-    if (parsed && Array.isArray(parsed.notes) && Array.isArray(parsed.spaces)) return { ...parsed, tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [] };
+    if (parsed && Array.isArray(parsed.notes) && Array.isArray(parsed.spaces)) return { ...parsed, tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [], tombstones: Array.isArray(parsed.tombstones) ? parsed.tombstones : [] };
   } catch {}
   return structuredClone(starterState);
 }
@@ -251,6 +253,7 @@ function openDatabase() {
       if (!database.objectStoreNames.contains('notes')) database.createObjectStore('notes', { keyPath: 'id' });
       if (!database.objectStoreNames.contains('spaces')) database.createObjectStore('spaces', { keyPath: 'id' });
       if (!database.objectStoreNames.contains('tasks')) database.createObjectStore('tasks', { keyPath: 'id' });
+      if (!database.objectStoreNames.contains('tombstones')) database.createObjectStore('tombstones', { keyPath: 'id' });
       if (!database.objectStoreNames.contains('metadata')) database.createObjectStore('metadata', { keyPath: 'key' });
       if (!database.objectStoreNames.contains('snapshots')) {
         const snapshots = database.createObjectStore('snapshots', { keyPath: 'id' });
@@ -339,15 +342,16 @@ function enqueueDurableWrite(snapshot, revision) {
 async function readNormalizedState(database) {
   const transaction = database.transaction([...DURABLE_STORES, 'metadata'], 'readonly');
   const completed = transactionDone(transaction);
-  const [notes, spaces, tasks, metadata] = await Promise.all([
+  const [notes, spaces, tasks, tombstones, metadata] = await Promise.all([
     databaseRequest(transaction.objectStore('notes').getAll()),
     databaseRequest(transaction.objectStore('spaces').getAll()),
     databaseRequest(transaction.objectStore('tasks').getAll()),
+    databaseRequest(transaction.objectStore('tombstones').getAll()),
     databaseRequest(transaction.objectStore('metadata').get('notebook')),
   ]);
   await completed;
   if (!metadata || !Array.isArray(notes) || !Array.isArray(spaces)) return null;
-  return { notes, spaces, tasks, modifiedAt: metadata.modifiedAt };
+  return { notes, spaces, tasks, tombstones, modifiedAt: metadata.modifiedAt };
 }
 
 async function readLatestSnapshot(database) {
@@ -379,6 +383,7 @@ async function hydrateDurableState() {
     }
     if (durable?.notes && durable?.spaces) {
       durable.tasks = Array.isArray(durable.tasks) ? durable.tasks : [];
+      durable.tombstones = Array.isArray(durable.tombstones) ? durable.tombstones : [];
       const durableTime = new Date(durable.modifiedAt || 0).getTime();
       const currentTime = new Date(state.modifiedAt || 0).getTime();
       if (durableTime > currentTime) {
@@ -446,28 +451,18 @@ function persist() {
 }
 
 function applyCloudNotebook(notebook) {
-  state = notebook;
+  const knownNotes = new Set(state.notes.map((note) => note.id));
+  const newConflicts = notebook.notes.filter((note) => note.conflictOf && !knownNotes.has(note.id));
+  state = { ...notebook, tombstones: Array.isArray(notebook.tombstones) ? notebook.tombstones : [] };
   selectedId = state.notes.some((note) => note.id === selectedId) ? selectedId : state.notes[0]?.id || null;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
   enqueueDurableWrite(structuredClone(state)).catch((error) => showSaveFailure(error));
   render();
+  if (newConflicts.length) toast(`${newConflicts.length} sync ${newConflicts.length === 1 ? 'conflict was' : 'conflicts were'} preserved as separate notes`);
 }
 
-function mergeNotebook(local, incoming) {
-  const newer = (first, second) => new Date(first.updated || first.created || 0) >= new Date(second.updated || second.created || 0) ? first : second;
-  const mergeItems = (left = [], right = []) => {
-    const items = new Map(left.map((item) => [item.id, item]));
-    right.forEach((item) => items.set(item.id, items.has(item.id) ? newer(items.get(item.id), item) : item));
-    return [...items.values()];
-  };
-  const spaces = new Map((local.spaces || []).map((space) => [space.id, space]));
-  (incoming.spaces || []).forEach((space) => { if (!spaces.has(space.id)) spaces.set(space.id, space); });
-  return {
-    notes: mergeItems(local.notes, incoming.notes),
-    tasks: mergeItems(local.tasks, incoming.tasks),
-    spaces: [...spaces.values()],
-    modifiedAt: new Date(local.modifiedAt || 0) >= new Date(incoming.modifiedAt || 0) ? local.modifiedAt : incoming.modifiedAt,
-  };
+function mergeNotebook(local, incoming, base = null) {
+  return mergeNotebookVersions(local, incoming, base);
 }
 
 deviceChannel?.addEventListener('message', (event) => {
@@ -1963,7 +1958,9 @@ $('#planner-body').addEventListener('click', (event) => {
     }
   }
   if (remove) {
-    state.tasks = state.tasks.filter((task) => task.id !== remove.dataset.removeTask);
+    const taskId = remove.dataset.removeTask;
+    state.tasks = state.tasks.filter((task) => task.id !== taskId);
+    state.tombstones = [...(state.tombstones || []).filter((entry) => entry.id !== `task:${taskId}`), deletionTombstone('task', taskId)];
     persist(); renderNav(); renderPlanner();
   }
   if (move) {
@@ -2307,6 +2304,7 @@ $('#action-dialog').addEventListener('close', () => {
   }
   if ($('#action-dialog').returnValue === 'delete') {
     state.notes = state.notes.filter((item) => item.id !== note.id);
+    state.tombstones = [...(state.tombstones || []).filter((entry) => entry.id !== `note:${note.id}`), deletionTombstone('note', note.id)];
     toast('Note deleted forever');
   }
   selectedId = visibleNotes().find((item) => item.id !== note.id)?.id || null;
