@@ -504,8 +504,30 @@ dialog::backdrop { background: rgba(2, 4, 9, 0.64); backdrop-filter: blur(8px); 
 .account-dialog.pending button, .account-dialog.pending input { opacity: .62; }
 .account-home { padding: 8px 25px 22px; }
 .account-identity { display: grid; grid-template-columns: 46px 1fr auto; align-items: center; gap: 12px; padding: 22px 0; border-bottom: 1px solid var(--line); }
-.account-avatar { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 15px; background: linear-gradient(145deg,#ff6948,#ff9b5e); color: white; font: 500 21px Georgia, serif; box-shadow: 0 10px 22px rgba(221,81,45,.18); }
+.account-identity .account-avatar { position: relative; width: 46px; height: 46px; display: grid; place-items: center; padding: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.22); border-radius: 15px; background: linear-gradient(145deg,#ff6948,#ff9b5e); color: white; font: 600 20px/1 Georgia, serif; box-shadow: 0 10px 22px rgba(221,81,45,.18); cursor: pointer; isolation: isolate; }
+.account-avatar > span { position: relative; z-index: 2; display: block; transform: translateY(-1px); }
+.account-avatar > i { position: absolute; z-index: 1; width: 34px; height: 34px; right: -15px; bottom: -17px; border: 1px solid rgba(255,255,255,.24); border-radius: 50%; }
+.account-avatar:focus-visible { outline: 3px solid rgba(49,92,245,.35); outline-offset: 3px; }
+.account-avatar[data-avatar="cobalt"] { background: linear-gradient(145deg,#315cf5,#7698ff); box-shadow: 0 10px 22px rgba(49,92,245,.2); }
+.account-avatar[data-avatar="lime"] { background: linear-gradient(145deg,#91b832,#c9f06a); color: #26310d; box-shadow: 0 10px 22px rgba(142,181,57,.18); }
+.account-avatar[data-avatar="violet"] { background: linear-gradient(145deg,#7452d8,#b295ff); box-shadow: 0 10px 22px rgba(116,82,216,.2); }
+.account-avatar[data-avatar="aqua"] { background: linear-gradient(145deg,#2da8ba,#70dded); color: #103136; box-shadow: 0 10px 22px rgba(45,168,186,.18); }
+.account-avatar[data-avatar="mineral"] { background: conic-gradient(from 215deg,#315cf5 0 33%,#ff5c35 33% 67%,#c9f06a 67%); color: #fff; }
 .account-identity strong, .account-identity span { display: block; }
+.avatar-picker { margin: -7px 0 18px 58px; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: rgba(255,255,255,.27); }
+.avatar-picker[hidden] { display: none; }
+.avatar-picker > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.avatar-picker strong { color: var(--ink); font-size: 9px; }
+.avatar-picker span { color: var(--faint); font-size: 8px; }
+.avatar-options { display: grid; grid-template-columns: repeat(6, 30px); gap: 8px; }
+.avatar-options button { width: 30px; height: 30px; padding: 0; border: 2px solid transparent; border-radius: 10px; background: linear-gradient(145deg,#ff6948,#ff9b5e); box-shadow: inset 0 0 0 2px var(--panel); cursor: pointer; }
+.avatar-options button[data-avatar-choice="cobalt"] { background: linear-gradient(145deg,#315cf5,#7698ff); }
+.avatar-options button[data-avatar-choice="lime"] { background: linear-gradient(145deg,#91b832,#c9f06a); }
+.avatar-options button[data-avatar-choice="violet"] { background: linear-gradient(145deg,#7452d8,#b295ff); }
+.avatar-options button[data-avatar-choice="aqua"] { background: linear-gradient(145deg,#2da8ba,#70dded); }
+.avatar-options button[data-avatar-choice="mineral"] { background: conic-gradient(from 215deg,#315cf5 0 33%,#ff5c35 33% 67%,#c9f06a 67%); }
+.avatar-options button.selected { border-color: var(--ink); }
+.avatar-options button:focus-visible { outline: 3px solid rgba(49,92,245,.3); outline-offset: 2px; }
 .account-identity strong { color: #3e3730; font-size: 13px; }
 .account-identity div > span { margin-top: 4px; color: #92877b; font-size: 10px; }
 .account-identity b { padding: 5px 8px; border-radius: 8px; background: rgba(109,145,78,.1); color: #5f7d42; font-size: 9px; }
@@ -586,6 +608,7 @@ html[data-theme="dark"] .account-tabs { background: rgba(0,0,0,.2); }
 html[data-theme="dark"] .account-tabs button.active { background: rgba(255,245,230,.08); color: #f7eee4; box-shadow: none; }
 html[data-theme="dark"] .account-form input, html[data-theme="dark"] .delete-account-dialog input { background: rgba(255,245,230,.035); color: #eee5db; }
 html[data-theme="dark"] .password-dialog input, html[data-theme="dark"] .backup-dialog input, html[data-theme="dark"] .backup-dialog-head > button, html[data-theme="dark"] .backup-dialog-actions button { background: rgba(255,245,230,.035); color: #eee5db; }
+html[data-theme="dark"] .avatar-picker { background: rgba(255,245,230,.035); }
 html[data-theme="dark"] .account-local-card { background: linear-gradient(135deg,rgba(70,101,215,.12),rgba(163,197,84,.07)); }
 html[data-theme="dark"] .account-local-card strong { color: #dce3ff; }
 html[data-theme="dark"] .account-sync-card, html[data-theme="dark"] .account-sync-card input, html[data-theme="dark"] .account-sync-trusted button { background: rgba(255,245,230,.035); color: #eee5db; }
@@ -605,6 +628,8 @@ html[data-theme="dark"] .account-sync-setup > button { background: #5474f7; }
   .account-home { padding-inline: 20px; }
   .account-identity { grid-template-columns: 44px 1fr; }
   .account-identity b { grid-column: 2; justify-self: start; }
+  .avatar-picker { margin-left: 0; }
+  .avatar-options { grid-template-columns: repeat(6, minmax(30px, 1fr)); }
   .account-danger { grid-template-columns: 1fr; }
   .account-danger button { justify-self: start; }
 }
@@ -655,7 +680,7 @@ kbd { color: #887f74; }
 .round-button:hover, .editor-actions button:hover { color: #27231e; background: rgba(255, 255, 255, 0.52); }
 .new-note-button { border-color: #e54d2a; background: #ff5c35; color: white; box-shadow: 0 8px 22px rgba(218, 70, 37, 0.2), inset 0 1px rgba(255,255,255,.28); }
 .new-note-button:hover { background: #ea4f2c; }
-.new-note-button kbd { color: rgba(255,255,255,.75); }
+.new-note-button kbd { margin-left: 3px; padding: 4px 6px; border: 1px solid rgba(255,255,255,.3); border-radius: 6px; background: rgba(83,20,8,.24); color: #fff; font-size: 9px; font-weight: 750; line-height: 1; box-shadow: inset 0 1px rgba(255,255,255,.12); }
 .rail { background: rgba(231, 220, 200, 0.58); }
 .rail-item, .space-item { color: #70685e; }
 .rail-item:hover, .space-item:hover { color: #25211d; background: rgba(255,255,255,.35); }

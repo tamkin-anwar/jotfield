@@ -364,7 +364,18 @@
         <p class="account-message" id="account-message" role="status" aria-live="polite"></p>
       </section>
       <section class="account-home" id="account-home" hidden>
-        <div class="account-identity"><span class="account-avatar" id="account-avatar">J</span><div><strong id="account-display-name">Jotfield member</strong><span id="account-address"></span></div><b id="account-verification">Verified</b></div>
+        <div class="account-identity"><button class="account-avatar" id="account-avatar" type="button" aria-label="Choose profile appearance"><span aria-hidden="true">J</span><i aria-hidden="true"></i></button><div><strong id="account-display-name">Jotfield member</strong><span id="account-address"></span></div><b id="account-verification">Verified</b></div>
+        <div class="avatar-picker" id="avatar-picker" hidden>
+          <div><strong>Profile appearance</strong><span>Stored only on this device</span></div>
+          <div class="avatar-options" role="radiogroup" aria-label="Profile appearance">
+            <button type="button" data-avatar-choice="ember" role="radio" aria-label="Ember"></button>
+            <button type="button" data-avatar-choice="cobalt" role="radio" aria-label="Cobalt"></button>
+            <button type="button" data-avatar-choice="lime" role="radio" aria-label="Lime"></button>
+            <button type="button" data-avatar-choice="violet" role="radio" aria-label="Violet"></button>
+            <button type="button" data-avatar-choice="aqua" role="radio" aria-label="Aqua"></button>
+            <button type="button" data-avatar-choice="mineral" role="radio" aria-label="Jotfield mineral"></button>
+          </div>
+        </div>
         <div class="account-local-card"><div><span>ON THIS DEVICE</span><strong id="account-note-count">0 notes</strong></div><i></i><p>Your local notebook remains available whenever you sign out.</p></div>
         <div class="account-sync-card" id="account-sync-card" data-mode="off">
           <div class="account-sync-head"><div><h3>Private cloud</h3><p id="cloud-sync-status" data-state="off" role="status" aria-live="polite" aria-atomic="true">Waiting for your account.</p></div><span id="cloud-sync-badge">Not connected</span></div>

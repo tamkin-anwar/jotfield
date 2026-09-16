@@ -10,6 +10,7 @@ import { deleteSlashTrigger, editorHTML, editorText, findInEditor, focusEditor, 
 const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
 const THEME_KEY = 'jotfield-appearance';
+const AVATAR_KEY = 'jotfield-avatar-style';
 const DB_NAME = 'jotfield-library';
 const DB_VERSION = 4;
 const REVISION_LIMIT = 250;
@@ -111,6 +112,7 @@ let cloudSync;
 let backupMode = 'download';
 let pendingBackupFile = null;
 let historyNoteId = null;
+let avatarChoice = localStorage.getItem(AVATAR_KEY) || 'ember';
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 let themeChoice = localStorage.getItem(THEME_KEY) || 'system';
@@ -129,6 +131,7 @@ function applyTheme(choice = themeChoice) {
 }
 
 applyTheme();
+requestAnimationFrame(() => applyAvatarChoice());
 systemTheme.addEventListener('change', () => {
   if (themeChoice === 'system') applyTheme();
 });
@@ -151,7 +154,7 @@ function renderAccount() {
   $('#account-home').hidden = !accountSession;
   $('#account-button-label').textContent = accountSession ? details.name : 'Account';
   if (!accountSession) return;
-  $('#account-avatar').textContent = details.initial;
+  $('#account-avatar span').textContent = details.initial;
   $('#account-display-name').textContent = details.name;
   $('#account-address').textContent = details.email;
   $('#account-verification').textContent = details.verified ? 'Verified' : 'Check email';
@@ -195,6 +198,17 @@ function setCloudSyncStatus(status, detail = '') {
   if (status === 'synced') saveState.lastChild.textContent = ' Up to date';
   if (status === 'offline') saveState.lastChild.textContent = ' Saved offline';
   if (status === 'error' || status === 'locked' || status === 'off') saveState.lastChild.textContent = ' Saved locally';
+}
+
+function applyAvatarChoice(choice = avatarChoice) {
+  const choices = ['ember', 'cobalt', 'lime', 'violet', 'aqua', 'mineral'];
+  avatarChoice = choices.includes(choice) ? choice : 'ember';
+  $('#account-avatar').dataset.avatar = avatarChoice;
+  $$('.avatar-options button').forEach((button) => {
+    const selected = button.dataset.avatarChoice === avatarChoice;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-checked', String(selected));
+  });
 }
 
 function setAccountMode(mode) {
@@ -1976,6 +1990,18 @@ $('#account-button').addEventListener('click', () => {
   requestAnimationFrame(() => (accountSession ? $('#account-signout') : $('#account-email')).focus());
 });
 $('#account-close').addEventListener('click', () => $('#account-dialog').close());
+$('#account-avatar').addEventListener('click', () => {
+  const picker = $('#avatar-picker');
+  picker.hidden = !picker.hidden;
+  if (!picker.hidden) applyAvatarChoice();
+});
+$('.avatar-options').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-avatar-choice]');
+  if (!button) return;
+  localStorage.setItem(AVATAR_KEY, button.dataset.avatarChoice);
+  applyAvatarChoice(button.dataset.avatarChoice);
+  setTimeout(() => { $('#avatar-picker').hidden = true; }, 180);
+});
 $('#cloud-sync-unlock').addEventListener('click', async () => {
   const passphrase = $('#cloud-sync-passphrase').value;
   const confirmation = $('#cloud-sync-confirm').value;
