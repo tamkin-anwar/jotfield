@@ -1158,3 +1158,6 @@ html[data-theme="dark"] .capture-dialog { border-color: var(--line-bright); back
   .printing-note .ProseMirror { color: #17130f !important; font-size: 11pt; }
   .printing-note a { color: #17130f !important; text-decoration: underline; }
 }
+
+/* The header uses the same canonical mark as browser and installation icons. */
+img.brand-mark { position: static; width: 52px; height: 36px; object-fit: contain; transform: none; flex-shrink: 0; }
