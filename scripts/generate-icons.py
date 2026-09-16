@@ -18,33 +18,33 @@ def background(size):
     return image.convert('RGBA')
 
 
-def capsule(color, length, thick, angle):
+def capsule(color, length, thick, angle, outline=0):
     pad = thick
     layer = Image.new('RGBA', (length + pad * 2, thick + pad * 2))
     shadow = Image.new('RGBA', layer.size)
     ImageDraw.Draw(shadow).rounded_rectangle((pad, pad, pad + length, pad + thick), radius=thick // 2, fill=(60, 35, 20, 70))
     shadow = shadow.filter(ImageFilter.GaussianBlur(thick // 7))
     shape = Image.new('RGBA', layer.size)
-    ImageDraw.Draw(shape).rounded_rectangle((pad, pad, pad + length, pad + thick), radius=thick // 2, fill=color)
+    ImageDraw.Draw(shape).rounded_rectangle((pad, pad, pad + length, pad + thick), radius=thick // 2, fill=color, outline='#fffaf0' if outline else None, width=outline)
     layer.alpha_composite(shadow, (0, thick // 12))
     layer.alpha_composite(shape)
     return layer.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True)
 
 
-def compose(scale=1.0, canvas=None):
+def compose(scale=1.0, canvas=None, compact=False):
     image = canvas.copy() if canvas else Image.new('RGBA', (MASTER, MASTER), (0, 0, 0, 0))
-    length, thick = int(1480 * scale), int(610 * scale)
-    centers = [(1470, 1710), (2050, 2050), (2630, 2390)]
+    length, thick = int((1900 if compact else 1480) * scale), int((790 if compact else 610) * scale)
+    centers = [(1350, 1470), (2050, 2050), (2750, 2630)] if compact else [(1470, 1710), (2050, 2050), (2630, 2390)]
     origin = (2050, 2050)
     for color, (center_x, center_y) in zip(COLORS, centers):
         center_x = int(origin[0] + (center_x - origin[0]) * scale)
         center_y = int(origin[1] + (center_y - origin[1]) * scale)
-        item = capsule(color, length, thick, -38)
+        item = capsule(color, length, thick, -38, int(34 * scale) if compact else 0)
         image.alpha_composite(item, (center_x - item.width // 2, center_y - item.height // 2))
     return image
 
 
-regular = compose(1.18)
+regular = compose(1.0, compact=True)
 maskable = compose(.78, background(MASTER))
 apple = compose(.78, background(MASTER))
 
