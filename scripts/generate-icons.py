@@ -20,5 +20,7 @@ safe.alpha_composite(mark, (offset, offset))
 safe.resize((180, 180), Image.Resampling.LANCZOS).save(ROOT / 'apple-touch-icon.png', optimize=True)
 for size in (1024, 512):
     safe.resize((size, size), Image.Resampling.LANCZOS).save(ROOT / f'jotfield-icon-maskable-{size}.png', optimize=True)
-regular.resize((256, 256), Image.Resampling.LANCZOS).save(ROOT / 'favicon.ico', sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+favicon_svg = (ROOT / 'jotfield-favicon.svg').read_bytes()
+favicon = Image.open(BytesIO(cairosvg.svg2png(bytestring=favicon_svg, output_width=256, output_height=256))).convert('RGBA')
+favicon.save(ROOT / 'favicon.ico', sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
 print('Rendered all Jotfield icons from public/jotfield-icon.svg')

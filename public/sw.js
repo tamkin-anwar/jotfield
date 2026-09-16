@@ -1,5 +1,5 @@
-const CACHE_NAME = 'jotfield-app-10';
-const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './jotfield-icon.svg', './favicon.ico', './jotfield-icon-192.png', './jotfield-icon-512.png', './apple-touch-icon.png'];
+const CACHE_NAME = 'jotfield-app-11';
+const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './jotfield-icon.svg', './jotfield-favicon.svg', './favicon.ico', './jotfield-icon-192.png', './jotfield-icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
