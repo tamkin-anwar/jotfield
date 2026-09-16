@@ -11,8 +11,10 @@ const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
 const THEME_KEY = 'jotfield-appearance';
 const DB_NAME = 'jotfield-library';
-const DB_VERSION = 3;
-const REVISION_LIMIT = 100;
+const DB_VERSION = 4;
+const REVISION_LIMIT = 250;
+const SNAPSHOT_LIMIT = 12;
+const REVISION_WINDOW = 60 * 1000;
 const DURABLE_STORES = ['notes', 'spaces', 'tasks'];
 const SPACE_COLORS = ['#7aa7ff', '#b295ff', '#70dded', '#77d6ad', '#f1bd70', '#ff8b93'];
 
@@ -108,6 +110,7 @@ let accountMode = 'signin';
 let cloudSync;
 let backupMode = 'download';
 let pendingBackupFile = null;
+let historyNoteId = null;
 
 const systemTheme = matchMedia('(prefers-color-scheme: dark)');
 let themeChoice = localStorage.getItem(THEME_KEY) || 'system';
@@ -235,6 +238,10 @@ function openDatabase() {
       if (!database.objectStoreNames.contains('spaces')) database.createObjectStore('spaces', { keyPath: 'id' });
       if (!database.objectStoreNames.contains('tasks')) database.createObjectStore('tasks', { keyPath: 'id' });
       if (!database.objectStoreNames.contains('metadata')) database.createObjectStore('metadata', { keyPath: 'key' });
+      if (!database.objectStoreNames.contains('snapshots')) {
+        const snapshots = database.createObjectStore('snapshots', { keyPath: 'id' });
+        snapshots.createIndex('created', 'created');
+      }
     });
     request.addEventListener('success', () => resolve(request.result));
     request.addEventListener('error', () => reject(request.error));
@@ -280,9 +287,14 @@ function syncDurableStore(transaction, storeName, records) {
   return next;
 }
 
+function durableTransaction(database, stores) {
+  try { return database.transaction(stores, 'readwrite', { durability: 'strict' }); }
+  catch { return database.transaction(stores, 'readwrite'); }
+}
+
 async function writeDurably(snapshot, revision) {
   const database = await openDatabase();
-  const transaction = database.transaction([...DURABLE_STORES, 'metadata', 'revisions'], 'readwrite');
+  const transaction = durableTransaction(database, [...DURABLE_STORES, 'metadata', 'revisions', 'snapshots']);
   const completed = transactionDone(transaction);
   const nextSignatures = new Map(DURABLE_STORES.map((store) => [store, syncDurableStore(transaction, store, snapshot[store] || [])]));
   transaction.objectStore('metadata').put({ key: 'notebook', modifiedAt: snapshot.modifiedAt || now(), schemaVersion: DB_VERSION });
@@ -292,6 +304,15 @@ async function writeDurably(snapshot, revision) {
   revisionKeys.addEventListener('success', () => {
     revisionKeys.result.slice(0, Math.max(0, revisionKeys.result.length - REVISION_LIMIT)).forEach((key) => revisions.delete(key));
   });
+  if (revision) {
+    const snapshots = transaction.objectStore('snapshots');
+    const bucket = Math.floor(Date.now() / (15 * 60 * 1000));
+    snapshots.put({ id: `auto-${bucket}`, created: now(), state: snapshot });
+    const snapshotKeys = snapshots.index('created').getAllKeys();
+    snapshotKeys.addEventListener('success', () => {
+      snapshotKeys.result.slice(0, Math.max(0, snapshotKeys.result.length - SNAPSHOT_LIMIT)).forEach((key) => snapshots.delete(key));
+    });
+  }
   await completed;
   nextSignatures.forEach((signatures, store) => durableSignatures.set(store, signatures));
 }
@@ -315,6 +336,15 @@ async function readNormalizedState(database) {
   return { notes, spaces, tasks, modifiedAt: metadata.modifiedAt };
 }
 
+async function readLatestSnapshot(database) {
+  if (!database.objectStoreNames.contains('snapshots')) return null;
+  const transaction = database.transaction('snapshots', 'readonly');
+  const completed = transactionDone(transaction);
+  const snapshots = await databaseRequest(transaction.objectStore('snapshots').index('created').getAll());
+  await completed;
+  return snapshots.sort((left, right) => new Date(right.created) - new Date(left.created))[0]?.state || null;
+}
+
 async function readLegacyDurableState(database) {
   const transaction = database.transaction('notebook', 'readonly');
   const completed = transactionDone(transaction);
@@ -328,8 +358,9 @@ async function hydrateDurableState() {
     const database = await openDatabase();
     let durable = await readNormalizedState(database);
     let migrated = false;
-    if (!durable) {
-      durable = await readLegacyDurableState(database);
+    if (!durable || !durable.spaces?.length) {
+      const recovered = await readLatestSnapshot(database);
+      durable = recovered || await readLegacyDurableState(database);
       migrated = Boolean(durable?.notes && durable?.spaces);
     }
     if (durable?.notes && durable?.spaces) {
@@ -381,7 +412,7 @@ function persist() {
     state.modifiedAt = now();
     const snapshot = structuredClone(state);
     const note = currentNote();
-    const revision = note ? { id: `${Date.now()}-${note.id}`, noteId: note.id, created: now(), note: structuredClone(note) } : null;
+    const revision = note ? { id: `${note.id}-${Math.floor(Date.now() / REVISION_WINDOW)}`, noteId: note.id, created: now(), note: structuredClone(note) } : null;
     let browserBackupSaved = true;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)); } catch { browserBackupSaved = false; }
     deviceChannel?.postMessage(makeSyncEnvelope('notebook.changed', snapshot));
@@ -1599,13 +1630,33 @@ function exportNotes() {
   toast('Notebook exported');
 }
 
+function downloadFile(contents, filename, type) {
+  const url = URL.createObjectURL(new Blob([contents], { type }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function exportMarkdownArchive() {
+  const notes = state.notes.filter((note) => !note.deleted);
+  const contents = notes.map((note) => {
+    const space = state.spaces.find((item) => item.id === note.space)?.name || 'Notes';
+    return `# ${note.title || 'Untitled'}\n\nSpace: ${space}\nUpdated: ${note.updated || note.created || ''}\n\n${noteText(note)}`;
+  }).join('\n\n---\n\n');
+  downloadFile(contents, `jotfield-markdown-${todayKey()}.md`, 'text/markdown;charset=utf-8');
+  toast(`${notes.length} notes exported as Markdown`);
+}
+
 function importNotes(file) {
   const reader = new FileReader();
   reader.addEventListener('load', () => {
     try {
       const data = JSON.parse(reader.result);
       if (!Array.isArray(data.notes) || !Array.isArray(data.spaces)) throw new Error('Invalid backup');
-      state = { notes: data.notes, spaces: data.spaces, tasks: Array.isArray(data.tasks) ? data.tasks : [] };
+      const incoming = { notes: data.notes, spaces: data.spaces, tasks: Array.isArray(data.tasks) ? data.tasks : [], modifiedAt: data.modifiedAt || data.exported || now() };
+      state = mergeNotebook(state, incoming);
       selectedId = state.notes.find((note) => !note.deleted)?.id || state.notes[0]?.id || null;
       currentView = 'all';
       currentSpace = null;
@@ -1613,7 +1664,7 @@ function importNotes(file) {
       currentSmart = null;
       persist();
       render();
-      toast('Notebook restored');
+      toast('Notebook merged safely');
     } catch {
       toast('That file is not a Jotfield backup');
     }
@@ -1630,6 +1681,7 @@ function openActions() {
         { value: 'delete', icon: 'trash', label: 'Delete forever', danger: true },
       ]
     : [
+        { value: 'history', icon: 'clock', label: 'Version history' },
         { value: note.archived ? 'restore' : 'archive', icon: note.archived ? 'restore' : 'archive', label: note.archived ? 'Return to notes' : 'Move to archive' },
         { value: 'trash', icon: 'trash', label: 'Move to recently deleted', danger: true },
       ];
@@ -1654,6 +1706,78 @@ function openActions() {
   cancel.append(cancelLabel);
   form.append(cancel);
   $('#action-dialog').showModal();
+}
+
+async function getNoteRevisions(noteId) {
+  const database = await openDatabase();
+  const transaction = database.transaction('revisions', 'readonly');
+  const completed = transactionDone(transaction);
+  const revisions = await databaseRequest(transaction.objectStore('revisions').index('noteId').getAll(noteId));
+  await completed;
+  return revisions.sort((left, right) => new Date(right.created) - new Date(left.created));
+}
+
+async function openVersionHistory() {
+  const note = currentNote();
+  if (!note) return;
+  historyNoteId = note.id;
+  $('#history-title').textContent = note.title || 'Untitled';
+  const list = $('#history-list');
+  list.innerHTML = '<p class="history-loading">Loading saved versions...</p>';
+  $('#history-dialog').showModal();
+  try {
+    const revisions = await getNoteRevisions(note.id);
+    list.replaceChildren();
+    revisions.forEach((revision, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.revisionId = revision.id;
+      const label = document.createElement('span');
+      label.textContent = index === 0 ? 'Latest saved version' : new Date(revision.created).toLocaleString();
+      const preview = document.createElement('small');
+      preview.textContent = cleanPreview(revision.note.body || revision.note.html || '') || 'Empty note';
+      button.append(label, preview);
+      list.append(button);
+    });
+    if (!revisions.length) list.innerHTML = '<p class="history-loading">Versions appear as you edit this note.</p>';
+  } catch { list.innerHTML = '<p class="history-loading">Version history could not be opened.</p>'; }
+}
+
+async function restoreRevision(revisionId) {
+  const database = await openDatabase();
+  const transaction = database.transaction('revisions', 'readonly');
+  const completed = transactionDone(transaction);
+  const revision = await databaseRequest(transaction.objectStore('revisions').get(revisionId));
+  await completed;
+  if (!revision?.note || revision.noteId !== historyNoteId) return;
+  const index = state.notes.findIndex((note) => note.id === historyNoteId);
+  if (index < 0) return;
+  const current = structuredClone(state.notes[index]);
+  await enqueueDurableWrite(structuredClone(state), { id: `restore-point-${Date.now()}-${historyNoteId}`, noteId: historyNoteId, created: now(), note: current });
+  state.notes[index] = { ...structuredClone(revision.note), id: historyNoteId, updated: now() };
+  persist();
+  render();
+  $('#history-dialog').close();
+  toast('Saved version restored');
+}
+
+async function refreshStorageHealth(requestPersistence = false) {
+  const status = $('#storage-health');
+  if (!status) return;
+  if (!navigator.storage) { status.textContent = 'Storage details are not available in this browser.'; return; }
+  try {
+    if (requestPersistence && navigator.storage.persist) await navigator.storage.persist();
+    const [estimate, persisted] = await Promise.all([
+      navigator.storage.estimate(),
+      navigator.storage.persisted ? navigator.storage.persisted() : Promise.resolve(false),
+    ]);
+    const used = estimate.usage || 0;
+    const quota = estimate.quota || 0;
+    const format = (bytes) => bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    status.textContent = `${format(used)} used${quota ? ` of ${format(quota)}` : ''}. ${persisted ? 'Protected from automatic cleanup.' : 'Browser-managed storage.'}`;
+    $('#protect-storage span').textContent = persisted ? 'Storage protected' : 'Protect local notes';
+    $('#protect-storage').disabled = persisted;
+  } catch { status.textContent = 'Storage details could not be read.'; }
 }
 
 $('#primary-nav').addEventListener('click', (event) => {
@@ -1841,6 +1965,7 @@ $('#planner-body').addEventListener('click', (event) => {
 $('#export-button').addEventListener('click', exportNotes);
 $('#import-button').addEventListener('click', () => $('#import-input').click());
 $('#settings-button').addEventListener('click', () => {
+  refreshStorageHealth();
   applyTheme();
   $('#settings-dialog').showModal();
 });
@@ -1991,6 +2116,8 @@ $('#copy-clipper').addEventListener('click', async () => {
   } catch { toast('Could not copy the web clipper'); }
 });
 $('#export-calendar').addEventListener('click', exportTaskCalendar);
+$('#export-markdown-archive').addEventListener('click', exportMarkdownArchive);
+$('#protect-storage').addEventListener('click', () => refreshStorageHealth(true));
 $('#capture-close').addEventListener('click', () => $('#capture-dialog').close());
 $('#capture-form').addEventListener('submit', (event) => {
   event.preventDefault();
@@ -2128,9 +2255,15 @@ $('#focus-button').addEventListener('click', () => {
   $('#focus-button').classList.toggle('active');
 });
 $('#more-button').addEventListener('click', openActions);
+$('#history-close').addEventListener('click', () => $('#history-dialog').close());
+$('#history-list').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-revision-id]');
+  if (button) restoreRevision(button.dataset.revisionId);
+});
 $('#action-dialog').addEventListener('close', () => {
   const note = currentNote();
   if (!note || $('#action-dialog').returnValue === 'cancel') return;
+  if ($('#action-dialog').returnValue === 'history') { openVersionHistory(); return; }
   if ($('#action-dialog').returnValue === 'archive') {
     note.archived = true;
     note.deleted = false;

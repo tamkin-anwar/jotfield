@@ -976,11 +976,27 @@ html[data-theme="dark"] .task-row strong, html[data-theme="dark"] .planner-empty
 .backup-note { display: grid; gap: 4px; padding: 10px 11px; border: 1px solid rgba(49,92,245,.1); border-radius: 10px; background: linear-gradient(135deg,rgba(49,92,245,.045),rgba(201,240,106,.045)); }
 .backup-note strong { color: #555d78; font-size: 9px; }
 .backup-note span { color: var(--faint); font-size: 9px; line-height: 1.45; }
-.vault-actions { display: flex; gap: 7px; margin-top: 9px; }
+.vault-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
 .vault-actions button, .install-button { min-height: 35px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.36); color: #655a50; font: inherit; font-size: 10px; cursor: pointer; }
 .vault-actions button:hover, .install-button:hover { border-color: rgba(255,92,53,.3); color: #a33c26; }
 .vault-actions svg, .install-button svg { width: 14px; height: 14px; }
 .device-settings { grid-template-columns: 1fr auto; }
+.device-actions { display: grid; gap: 7px; }
+.storage-health { margin-top: 7px !important; color: var(--faint); font-size: 9px !important; line-height: 1.45; }
+.history-dialog { width: min(520px, calc(100vw - 28px)); max-height: min(680px, calc(100vh - 28px)); padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 21px; background: rgba(251,247,238,.99); color: var(--ink); box-shadow: 0 34px 110px rgba(62,35,20,.32); }
+.history-head { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+.history-head span { color: var(--accent); font-size: 8px; font-weight: 760; letter-spacing: 1.3px; }
+.history-head h2 { max-width: 390px; margin: 5px 0 0; overflow: hidden; font: 500 21px Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
+.history-head button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
+.history-head svg { width: 14px; height: 14px; }
+.history-dialog > p { margin: 0; padding: 14px 20px 4px; color: var(--faint); font-size: 10px; line-height: 1.45; }
+.history-list { max-height: 490px; display: grid; gap: 7px; padding: 12px 20px 20px; overflow-y: auto; }
+.history-list button { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.32); color: var(--ink); text-align: left; cursor: pointer; }
+.history-list button:hover { border-color: rgba(255,92,53,.35); background: rgba(255,92,53,.04); }
+.history-list span { font-size: 10px; font-weight: 700; }
+.history-list small, .history-loading { color: var(--faint); font-size: 9px; line-height: 1.45; }
+html[data-theme="dark"] .history-dialog { border-color: var(--line-bright); background: rgba(29,26,22,.99); box-shadow: 0 36px 120px rgba(0,0,0,.62); }
+html[data-theme="dark"] .history-list button { background: rgba(255,245,230,.035); }
 .ecosystem-settings { display: block; }
 .ecosystem-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .ecosystem-actions button { min-height: 39px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 9px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.36); color: #655a50; font: inherit; font-size: 10px; cursor: pointer; }
@@ -1008,6 +1024,8 @@ html[data-theme="dark"] .capture-dialog { border-color: var(--line-bright); back
   .mobile-dock { position: fixed; z-index: 45; left: 10px; right: 10px; bottom: max(8px, env(safe-area-inset-bottom)); height: 54px; display: grid; grid-template-columns: repeat(4, 1fr); padding: 4px; border: 1px solid var(--line-bright); border-radius: 17px; background: rgba(250,246,238,.91); box-shadow: 0 14px 40px rgba(58,40,23,.18); backdrop-filter: blur(24px) saturate(130%); }
   .mobile-dock button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; border-radius: 12px; background: transparent; color: #8d8175; font: inherit; font-size: 8px; }
   .mobile-dock svg { width: 17px; height: 17px; }
+  .device-settings { grid-template-columns: 1fr; }
+  .device-actions { grid-template-columns: 1fr 1fr; width: 100%; }
   .mobile-dock .capture { background: var(--accent); color: white; }
   .settings-section { grid-template-columns: 1fr; }
   .ecosystem-actions { grid-template-columns: 1fr; }
