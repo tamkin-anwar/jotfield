@@ -7,6 +7,7 @@ The interface is built as a luminous desktop instrument. A WebGL light field mov
 ## What is here
 
 - Instant note capture with `Command N`
+- A brief, optional first-run guide with direct paths to writing and importing
 - Quick Jot capture with `Shift Command N`
 - Full notebook search and navigation with `Command K`
 - Relevance-ranked search with title, tag, recent, and attachment filters

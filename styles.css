@@ -1204,3 +1204,102 @@ html[data-theme="dark"] .capture-dialog { border-color: var(--line-bright); back
 
 /* The header uses the same canonical mark as browser and installation icons. */
 img.brand-mark { position: static; width: 52px; height: 36px; object-fit: contain; transform: none; flex-shrink: 0; }
+
+
+/* Batch 11A first-run guide */
+.onboarding-dialog {
+  width: min(660px, calc(100vw - 28px));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(54,45,34,.16);
+  border-radius: 25px;
+  background: rgba(251,247,238,.985);
+  color: var(--ink);
+  box-shadow: 0 38px 130px rgba(48,31,18,.32), inset 0 1px rgba(255,255,255,.75);
+  backdrop-filter: blur(34px);
+}
+.onboarding-dialog[open] { animation: reveal 220ms cubic-bezier(.2,.78,.2,1); }
+.onboarding-dialog::backdrop { background: rgba(30,24,18,.42); backdrop-filter: blur(12px) saturate(85%); }
+.onboarding-shell { min-height: 610px; display: grid; grid-template-rows: auto auto 1fr auto; }
+.onboarding-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 10px; }
+.onboarding-brand { display: flex; align-items: center; gap: 9px; }
+.onboarding-brand img { width: 42px; height: 29px; object-fit: contain; }
+.onboarding-brand span { font: 600 17px Georgia, serif; }
+.onboarding-head > button { padding: 8px 10px; border: 0; background: transparent; color: var(--faint); font: 600 10px/1 var(--sans, system-ui); cursor: pointer; }
+.onboarding-head > button:hover { color: var(--ink); }
+.onboarding-progress { display: flex; gap: 6px; padding: 0 25px; }
+.onboarding-progress i { width: 22px; height: 3px; border-radius: 3px; background: var(--line-bright); transition: background 180ms ease, width 180ms ease; }
+.onboarding-progress i.active { width: 34px; background: #ff5c35; }
+.onboarding-step { padding: 20px 48px 16px; outline: 0; }
+.onboarding-step.active { animation: onboarding-step-in 220ms cubic-bezier(.2,.78,.2,1); }
+@keyframes onboarding-step-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+.onboarding-kicker { display: block; margin-top: 23px; color: #e14f2e; font-size: 9px; font-weight: 760; letter-spacing: 1.5px; }
+.onboarding-step h2 { margin: 7px 0 9px; outline: 0; font: 500 clamp(31px,5vw,43px)/1.02 Georgia, serif; letter-spacing: -1.4px; }
+.onboarding-step > p { max-width: 520px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.62; }
+.onboarding-visual { position: relative; height: 210px; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(145deg,rgba(255,255,255,.52),rgba(231,220,203,.34)); }
+.capture-visual { display: grid; place-items: center; }
+.capture-visual span { position: absolute; width: 146px; height: 88px; border-radius: 22px; transform: rotate(-12deg); background: #315cf5; box-shadow: 0 18px 38px rgba(49,92,245,.18); }
+.capture-visual span:nth-child(2) { transform: rotate(0); background: #ff5c35; }
+.capture-visual span:nth-child(3) { transform: rotate(12deg); background: #c5f05a; }
+.capture-visual b { position: relative; z-index: 2; padding: 10px 15px; border-radius: 10px; background: rgba(251,247,238,.92); font: 500 15px Georgia, serif; box-shadow: 0 9px 28px rgba(44,31,20,.17); }
+.connect-visual { display: grid; place-items: center; }
+.connect-visual svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: rgba(85,73,61,.24); stroke-width: 1.5; }
+.connect-visual i { position: absolute; z-index: 2; width: 20px; height: 20px; border: 6px solid rgba(255,255,255,.8); border-radius: 50%; background: #315cf5; box-shadow: 0 7px 22px rgba(49,92,245,.25); }
+.connect-visual i:nth-child(1) { left: 17%; top: 43%; }
+.connect-visual i:nth-child(2) { left: 48%; top: 22%; background: #ff5c35; }
+.connect-visual i:nth-child(3) { right: 16%; top: 43%; background: #c5f05a; }
+.privacy-visual { display: grid; place-content: center; justify-items: center; gap: 7px; background: radial-gradient(circle at 50% 52%,rgba(49,92,245,.12),transparent 36%),linear-gradient(145deg,rgba(255,255,255,.52),rgba(231,220,203,.34)); }
+.privacy-visual svg { width: 52px; height: 52px; fill: none; stroke: #315cf5; stroke-width: 1.4; }
+.privacy-visual span { color: var(--faint); font-size: 9px; font-weight: 720; letter-spacing: 1.1px; text-transform: uppercase; }
+.privacy-visual b { font: 500 17px Georgia, serif; }
+.onboarding-shortcuts, .onboarding-chips, .onboarding-proof { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 17px; }
+.onboarding-shortcuts span, .onboarding-chips span, .onboarding-proof span { padding: 8px 10px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.3); color: var(--muted); font-size: 10px; }
+.onboarding-shortcuts kbd { margin-right: 5px; color: var(--ink); }
+.onboarding-chips span:nth-child(2) { color: #315cf5; }
+.onboarding-chips span:nth-child(3) { color: #e14f2e; }
+.onboarding-proof span::before { content: '✓'; margin-right: 6px; color: #6d9b31; font-weight: 800; }
+.onboarding-actions { min-height: 76px; display: flex; align-items: center; gap: 9px; padding: 14px 24px 20px; border-top: 1px solid var(--line); }
+.onboarding-actions > button, .onboarding-finish button { min-height: 42px; padding: 0 15px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.35); color: var(--muted); font: 650 11px/1 system-ui; cursor: pointer; }
+.onboarding-actions .onboarding-next { margin-left: auto; border-color: transparent; background: #315cf5; color: white; }
+.onboarding-finish { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.onboarding-finish[hidden] { display: none; }
+.onboarding-finish button { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.onboarding-finish svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.onboarding-finish .onboarding-primary { border-color: transparent; background: #ff5c35; color: white; box-shadow: 0 9px 24px rgba(255,92,53,.2); }
+.guide-settings { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 20px; border-top: 1px solid var(--line); }
+.guide-settings .settings-copy p { margin-bottom: 0; }
+.guide-settings .install-button { min-width: 132px; }
+html[data-theme="dark"] .onboarding-dialog { border-color: var(--line-bright); background: rgba(29,26,22,.99); box-shadow: 0 38px 130px rgba(0,0,0,.66), inset 0 1px rgba(255,255,255,.04); }
+html[data-theme="dark"] .onboarding-dialog::backdrop { background: rgba(0,0,0,.66); }
+html[data-theme="dark"] .onboarding-visual { background: linear-gradient(145deg,rgba(255,245,230,.055),rgba(0,0,0,.1)); }
+html[data-theme="dark"] .capture-visual b { background: rgba(29,26,22,.93); box-shadow: 0 10px 32px rgba(0,0,0,.35); }
+html[data-theme="dark"] .connect-visual svg { stroke: rgba(241,234,223,.2); }
+html[data-theme="dark"] .connect-visual i { border-color: rgba(29,26,22,.86); }
+html[data-theme="dark"] .privacy-visual { background: radial-gradient(circle at 50% 52%,rgba(91,124,255,.18),transparent 38%),linear-gradient(145deg,rgba(255,245,230,.055),rgba(0,0,0,.1)); }
+html[data-theme="dark"] .onboarding-shortcuts span, html[data-theme="dark"] .onboarding-chips span, html[data-theme="dark"] .onboarding-proof span, html[data-theme="dark"] .onboarding-actions > button, html[data-theme="dark"] .onboarding-finish button { background: rgba(255,245,230,.04); }
+html[data-theme="dark"] .onboarding-actions .onboarding-next { background: #4e70ff; color: white; }
+html[data-theme="dark"] .onboarding-finish .onboarding-primary { background: #ff6a46; color: white; }
+@media (max-width: 620px) {
+  .onboarding-dialog { width: calc(100vw - 16px); max-width: none; max-height: calc(100dvh - 16px); margin: 8px; border-radius: 22px; }
+  .onboarding-shell { min-height: calc(100dvh - 18px); }
+  .onboarding-head { padding: max(17px,env(safe-area-inset-top)) 19px 9px; }
+  .onboarding-progress { padding-inline: 20px; }
+  .onboarding-step { display: flex; flex-direction: column; justify-content: center; padding: 16px 20px 12px; }
+  .onboarding-visual { height: min(27vh,210px); min-height: 150px; }
+  .onboarding-kicker { margin-top: 17px; }
+  .onboarding-step h2 { font-size: clamp(29px,9vw,38px); }
+  .onboarding-step > p { font-size: 12px; }
+  .onboarding-actions { padding: 12px 19px max(18px,env(safe-area-inset-bottom)); }
+  .guide-settings { grid-template-columns: 1fr; gap: 12px; }
+  .guide-settings .install-button { width: 100%; }
+}
+@media (max-height: 680px) {
+  .onboarding-shell { min-height: min(560px,calc(100dvh - 16px)); }
+  .onboarding-visual { height: 150px; }
+  .onboarding-step { padding-top: 12px; }
+  .onboarding-kicker { margin-top: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-dialog[open], .onboarding-step.active { animation: none; }
+  .onboarding-progress i { transition: none; }
+}

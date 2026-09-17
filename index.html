@@ -311,7 +311,52 @@
         <div class="ecosystem-actions"><button type="button" id="import-note-files"><svg><use href="#i-import"/></svg><span>Import notes</span></button><button type="button" id="copy-clipper"><svg><use href="#i-bolt"/></svg><span>Copy web clipper</span></button><button type="button" id="export-calendar"><svg><use href="#i-calendar"/></svg><span>Export calendar</span></button></div>
         <p class="ecosystem-status" id="ecosystem-status">The web clipper saves the page title, address, and selected text.</p>
       </section>
+      <section class="settings-section guide-settings">
+        <div class="settings-copy"><h3>Quick guide</h3><p>Revisit the short introduction to capture, connections, and privacy.</p></div>
+        <button class="install-button" id="open-onboarding" type="button"><svg><use href="#i-spark"/></svg><span>Take the tour</span></button>
+      </section>
       <p class="settings-foot">Local use never requires an account.</p>
+    </dialog>
+
+    <dialog class="onboarding-dialog" id="onboarding-dialog" aria-label="Welcome to Jotfield">
+      <div class="onboarding-shell">
+        <header class="onboarding-head">
+          <div class="onboarding-brand"><img src="./jotfield-favicon.svg?v=12" alt="" width="48" height="34" /><span>Jotfield</span></div>
+          <button id="onboarding-skip" type="button">Skip</button>
+        </header>
+        <div class="onboarding-progress" aria-label="Tour progress">
+          <i class="active"></i><i></i><i></i>
+        </div>
+        <section class="onboarding-step active" data-onboarding-step="0">
+          <div class="onboarding-visual capture-visual" aria-hidden="true"><span></span><span></span><span></span><b>Write first.</b></div>
+          <span class="onboarding-kicker">CAPTURE</span>
+          <h2 id="onboarding-title" tabindex="-1">Start with the thought.</h2>
+          <p>Open a note when you want room to think. Use Quick Jot when the idea cannot wait.</p>
+          <div class="onboarding-shortcuts"><span><kbd>⌘ N</kbd> New note</span><span><kbd>⇧⌘ N</kbd> Quick Jot</span></div>
+        </section>
+        <section class="onboarding-step" data-onboarding-step="1" hidden>
+          <div class="onboarding-visual connect-visual" aria-hidden="true"><i></i><i></i><i></i><svg viewBox="0 0 260 116"><path d="M54 58C88 12 166 13 205 56M54 58c42 48 112 49 151-2"/></svg></div>
+          <span class="onboarding-kicker">CONNECT</span>
+          <h2 tabindex="-1">Let structure arrive later.</h2>
+          <p>Add spaces and tags only when they help. Type <strong>[[Note title]]</strong> to connect an idea and let backlinks build around it.</p>
+          <div class="onboarding-chips" aria-hidden="true"><span>Personal</span><span>#ideas</span><span>[[Field test]]</span></div>
+        </section>
+        <section class="onboarding-step" data-onboarding-step="2" hidden>
+          <div class="onboarding-visual privacy-visual" aria-hidden="true"><svg><use href="#i-shield"/></svg><span>On this device</span><b>Private by default</b></div>
+          <span class="onboarding-kicker">OWNERSHIP</span>
+          <h2 tabindex="-1">Your notebook starts private.</h2>
+          <p>Jotfield works locally without an account. Download encrypted backups anytime, or turn on end-to-end encrypted sync when you want your notes on another device.</p>
+          <div class="onboarding-proof"><span>Local first</span><span>Portable backups</span><span>Optional sync</span></div>
+        </section>
+        <footer class="onboarding-actions">
+          <button id="onboarding-back" type="button" hidden>Back</button>
+          <button class="onboarding-next" id="onboarding-next" type="button">Continue</button>
+          <div class="onboarding-finish" id="onboarding-finish" hidden>
+            <button id="onboarding-import" type="button"><svg><use href="#i-import"/></svg>Bring notes in</button>
+            <button class="onboarding-primary" id="onboarding-write" type="button"><svg><use href="#i-plus"/></svg>Write a note</button>
+          </div>
+        </footer>
+      </div>
     </dialog>
 
     <dialog class="history-dialog" id="history-dialog">

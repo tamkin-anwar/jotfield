@@ -12,6 +12,7 @@ const STORAGE_KEY = 'jotfield-notes-v1';
 const LEGACY_STORAGE_KEY = 'facet-notes-v1';
 const THEME_KEY = 'jotfield-appearance';
 const AVATAR_KEY = 'jotfield-avatar-style';
+const ONBOARDING_KEY = 'jotfield-onboarding-v1';
 const DB_NAME = 'jotfield-library';
 const DB_VERSION = 5;
 const REVISION_LIMIT = 250;
@@ -81,7 +82,9 @@ const starterState = {
   tombstones: [],
 };
 
+const freshNotebook = !localStorage.getItem(STORAGE_KEY) && !localStorage.getItem(LEGACY_STORAGE_KEY);
 let state = loadState();
+let hadDurableNotebook = false;
 let currentView = 'now';
 let currentSpace = null;
 let currentTag = null;
@@ -382,6 +385,7 @@ async function hydrateDurableState() {
       migrated = Boolean(durable?.notes && durable?.spaces);
     }
     if (durable?.notes && durable?.spaces) {
+      hadDurableNotebook = true;
       durable.tasks = Array.isArray(durable.tasks) ? durable.tasks : [];
       durable.tombstones = Array.isArray(durable.tombstones) ? durable.tombstones : [];
       const durableTime = new Date(durable.modifiedAt || 0).getTime();
@@ -405,6 +409,40 @@ async function hydrateDurableState() {
   } catch (error) {
     showSaveFailure(error, true);
   }
+}
+
+let onboardingStep = 0;
+
+function renderOnboarding() {
+  const steps = $$('.onboarding-step');
+  steps.forEach((step, index) => {
+    const active = index === onboardingStep;
+    step.hidden = !active;
+    step.classList.toggle('active', active);
+  });
+  $$('.onboarding-progress i').forEach((dot, index) => dot.classList.toggle('active', index <= onboardingStep));
+  $('#onboarding-back').hidden = onboardingStep === 0;
+  $('#onboarding-next').hidden = onboardingStep === steps.length - 1;
+  $('#onboarding-finish').hidden = onboardingStep !== steps.length - 1;
+  requestAnimationFrame(() => steps[onboardingStep]?.querySelector('h2')?.focus());
+}
+
+function openOnboarding() {
+  onboardingStep = 0;
+  renderOnboarding();
+  if (!$('#onboarding-dialog').open) $('#onboarding-dialog').showModal();
+}
+
+function finishOnboarding(action = 'dismiss') {
+  localStorage.setItem(ONBOARDING_KEY, 'complete');
+  $('#onboarding-dialog').close();
+  if (action === 'write') createNote();
+  if (action === 'import') $('#note-files-input').click();
+}
+
+function maybeOpenOnboarding() {
+  if (!freshNotebook || hadDurableNotebook || localStorage.getItem(ONBOARDING_KEY) || location.hash) return;
+  requestAnimationFrame(openOnboarding);
 }
 
 function showSaveFailure(error, duringOpen = false) {
@@ -1981,6 +2019,14 @@ $('#settings-button').addEventListener('click', () => {
   $('#settings-dialog').showModal();
 });
 $('#settings-close').addEventListener('click', () => $('#settings-dialog').close());
+$('#open-onboarding').addEventListener('click', () => { $('#settings-dialog').close(); openOnboarding(); });
+$('#onboarding-skip').addEventListener('click', () => finishOnboarding());
+$('#onboarding-back').addEventListener('click', () => { onboardingStep = Math.max(0, onboardingStep - 1); renderOnboarding(); });
+$('#onboarding-next').addEventListener('click', () => { onboardingStep = Math.min(2, onboardingStep + 1); renderOnboarding(); });
+$('#onboarding-write').addEventListener('click', () => finishOnboarding('write'));
+$('#onboarding-import').addEventListener('click', () => finishOnboarding('import'));
+$('#onboarding-dialog').addEventListener('cancel', () => localStorage.setItem(ONBOARDING_KEY, 'complete'));
+
 $('#account-button').addEventListener('click', () => {
   renderAccount();
   $('#account-dialog').showModal();
@@ -2596,7 +2642,7 @@ if (cloudReady) {
     }
   }).catch(() => { document.documentElement.dataset.cloud = 'unavailable'; });
 }
-hydrateDurableState();
+hydrateDurableState().finally(maybeOpenOnboarding);
 showSharedNote();
 handleLaunchIntent();
 
